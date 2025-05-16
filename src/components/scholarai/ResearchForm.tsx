@@ -68,14 +68,13 @@ export function ResearchForm({ handleSearch, handleResearch }: ResearchFormProps
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6 p-6 sm:p-8">
-          <h2 className="text-2xl md:text-3xl font-semibold text-center text-primary">
-            What do you want to explore?
-          </h2>
+          {/* "What do you want to explore?" text removed from here */}
           <form ref={formRef} onSubmit={onFormSubmit} className="space-y-4">
             {/* Main container for input, buttons, and icons */}
             <div className="rounded-lg border bg-card p-3 shadow-sm">
               <Label htmlFor="query-input" className="text-xs text-muted-foreground px-1">Ask anything...</Label>
               <div className="flex items-center mt-1">
+                <Search className="h-5 w-5 text-muted-foreground ml-1 mr-2 flex-shrink-0" /> 
                 <Input
                   id="query-input"
                   type="text"
