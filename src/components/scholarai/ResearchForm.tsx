@@ -6,6 +6,7 @@ import { useState, useTransition, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { Search, Network, Paperclip } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -34,7 +35,7 @@ export function ResearchForm({ handleSearch, handleResearch }: ResearchFormProps
     
     if (!formRef.current) return;
     const formData = new FormData(formRef.current);
-    formData.set('query', query);
+    formData.set('query', query); // Ensure query state is used
 
     if (action === 'search') {
       startSearchTransition(() => {
@@ -71,51 +72,60 @@ export function ResearchForm({ handleSearch, handleResearch }: ResearchFormProps
             What do you want to explore?
           </h2>
           <form ref={formRef} onSubmit={onFormSubmit} className="space-y-4">
-            <div className="relative w-full">
-              <Input
-                type="text"
-                name="query"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Ask anything..."
-                className="p-4 pr-12 sm:pr-16 text-base shadow-md w-full"
-                aria-label="Research query input"
-              />
-              <div className="absolute inset-y-0 right-0 flex items-center pr-2">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" type="button" aria-label="Upload PDF">
-                      <Paperclip className="h-5 w-5 text-muted-foreground hover:text-primary" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Upload PDF for analysis</p>
-                  </TooltipContent>
-                </Tooltip>
+            {/* Main container for input, buttons, and icons */}
+            <div className="rounded-lg border bg-card p-3 shadow-sm">
+              <Label htmlFor="query-input" className="text-xs text-muted-foreground px-1">Ask anything...</Label>
+              <div className="flex items-center mt-1">
+                <Input
+                  id="query-input"
+                  type="text"
+                  name="query"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="" // Visually handled by the Label
+                  className="flex-grow border-0 focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none p-1 text-base h-auto"
+                  aria-label="Research query input"
+                />
+                <div className="pl-2">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" type="button" aria-label="Upload PDF" className="h-8 w-8">
+                          <Paperclip className="h-4 w-4 text-muted-foreground hover:text-primary" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Upload PDF for analysis</p>
+                      </TooltipContent>
+                    </Tooltip>
+                </div>
               </div>
-            </div>
-            
-            <div className="flex flex-col sm:flex-row gap-3 pt-2 w-full">
-              <Button 
-                type="submit"
-                className="flex-1 py-3 text-base font-semibold" 
-                disabled={isSearchPending || isResearchPending}
-                aria-label="Perform a standard search"
-              >
-                <Search className="mr-2 h-4 w-4" />
-                {isSearchPending ? "Searching..." : "Search"}
-              </Button>
-              <Button 
-                type="button"
-                className="flex-1 py-3 text-base font-semibold border-accent text-accent hover:bg-accent hover:text-accent-foreground focus:ring-accent"
-                variant="outline"
-                onClick={() => handleSubmitLogic('research')}
-                disabled={isResearchPending || isSearchPending}
-                aria-label="Perform an AI-enhanced deep research"
-              >
-                <Network className="mr-2 h-4 w-4" />
-                {isResearchPending ? "Researching..." : "Deep Research"}
-              </Button>
+
+              {/* Buttons below input, inside the same card structure */}
+              <div className="flex flex-col sm:flex-row gap-2 pt-3">
+                <Button
+                  type="submit"
+                  variant="outline"
+                  size="sm"
+                  className="font-semibold border-accent text-accent hover:bg-accent hover:text-accent-foreground focus-visible:ring-accent"
+                  disabled={isSearchPending || isResearchPending}
+                  aria-label="Perform a standard search"
+                >
+                  <Search className="mr-1.5 h-4 w-4" />
+                  {isSearchPending ? "Searching..." : "Search"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="font-semibold"
+                  onClick={() => handleSubmitLogic('research')}
+                  disabled={isResearchPending || isSearchPending}
+                  aria-label="Perform an AI-enhanced deep research"
+                >
+                  <Network className="mr-1.5 h-4 w-4" />
+                  {isResearchPending ? "Researching..." : "Deep Research"}
+                </Button>
+              </div>
             </div>
           </form>
         </CardContent>
