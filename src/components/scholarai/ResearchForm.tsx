@@ -3,7 +3,6 @@
 
 import type { FormEvent } from 'react';
 import { useState, useTransition, useRef } from 'react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -18,7 +17,6 @@ interface ResearchFormProps {
 
 export function ResearchForm({ handleSearch, handleResearch }: ResearchFormProps) {
   const [query, setQuery] = useState("");
-  const [isSearchPending, startSearchTransition] = useTransition();
   const [isResearchPending, startResearchTransition] = useTransition();
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
@@ -35,12 +33,11 @@ export function ResearchForm({ handleSearch, handleResearch }: ResearchFormProps
     
     if (!formRef.current) return;
     const formData = new FormData(formRef.current);
-    formData.set('query', query); // Ensure query state is used
+    formData.set('query', query);
 
     if (action === 'search') {
-      startSearchTransition(() => {
-        handleSearch(formData);
-      });
+      // No transition for search as it's implicit on enter
+      handleSearch(formData);
     } else if (action === 'research') {
       startResearchTransition(() => {
         handleResearch(formData);
@@ -54,71 +51,55 @@ export function ResearchForm({ handleSearch, handleResearch }: ResearchFormProps
   };
 
   return (
-    <Card className="w-full max-w-2xl shadow-lg rounded-xl">
-      <TooltipProvider>
-        <CardHeader className="p-6 sm:p-8 text-center">
-          <CardTitle className="text-3xl sm:text-4xl font-bold text-primary">
-            Contvia
-          </CardTitle>
-          <CardDescription className="text-lg text-muted-foreground pt-1">
-            The only research workplace you need
-          </CardDescription>
-          <CardDescription className="text-sm text-muted-foreground pt-1">
-            Your AI-Powered Research Assistant
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6 p-6 sm:p-8">
-          <form ref={formRef} onSubmit={onFormSubmit} className="space-y-4">
-            <div className="rounded-lg border bg-card p-3 shadow-sm">
-              <Label htmlFor="query-input" className="text-xs text-muted-foreground px-1">Ask anything...</Label>
-              <div className="flex items-center mt-1">
-                <ArrowRightCircle className="h-5 w-5 text-muted-foreground ml-1 mr-2 flex-shrink-0" /> 
-                <Input
-                  id="query-input"
-                  type="text"
-                  name="query"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="" 
-                  className="flex-grow border-0 focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none p-1 text-base h-auto"
-                  aria-label="Research query input"
-                />
-                <div className="pl-2">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" type="button" aria-label="Upload PDF" className="h-8 w-8">
-                          <Paperclip className="h-4 w-4 text-muted-foreground hover:text-primary" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Upload PDF for analysis</p>
-                      </TooltipContent>
-                    </Tooltip>
-                </div>
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-2 pt-3 justify-center">
-                {/* Search button removed as per request */}
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  className="font-semibold"
-                  onClick={() => handleSubmitLogic('research')}
-                  disabled={isResearchPending || isSearchPending}
-                  aria-label="Perform an AI-enhanced deep research"
-                >
-                  <Network className="mr-1.5 h-4 w-4" />
-                  {isResearchPending ? "Researching..." : "Deep Research"}
-                </Button>
-              </div>
+    <TooltipProvider>
+      <form ref={formRef} onSubmit={onFormSubmit} className="space-y-6">
+        <div className="rounded-lg border bg-card p-4 shadow-lg">
+          <Label htmlFor="query-input" className="text-sm font-medium text-muted-foreground px-1 block mb-2">
+            Ask anything...
+          </Label>
+          <div className="flex items-center relative">
+            <ArrowRightCircle className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground flex-shrink-0" /> 
+            <Input
+              id="query-input"
+              type="text"
+              name="query"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="" 
+              className="flex-grow border-input focus-visible:ring-accent focus-visible:border-accent shadow-sm p-3 pl-10 text-base h-12 rounded-md"
+              aria-label="Research query input"
+            />
+            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" type="button" aria-label="Upload PDF" 
+                            className="h-9 w-9 text-muted-foreground hover:text-primary transition-transform duration-200 ease-in-out hover:scale-110 active:scale-100">
+                      <Paperclip className="h-5 w-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Upload PDF for analysis</p>
+                  </TooltipContent>
+                </Tooltip>
             </div>
-          </form>
-        </CardContent>
-        <CardFooter className="p-6 sm:p-8 text-xs text-muted-foreground text-center justify-center">
-          <p>Tip: Use "Deep Research" for AI-powered query refinement and deeper analysis.</p>
-        </CardFooter>
-      </TooltipProvider>
-    </Card>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 pt-4 justify-center">
+            <Button
+              type="button"
+              variant="secondary"
+              size="lg"
+              className="font-semibold w-full sm:w-auto transition-all duration-200 ease-in-out hover:scale-105 hover:shadow-lg active:scale-98"
+              onClick={() => handleSubmitLogic('research')}
+              disabled={isResearchPending}
+              aria-label="Perform an AI-enhanced deep research"
+            >
+              <Network className="mr-2 h-5 w-5" />
+              {isResearchPending ? "Researching..." : "Deep Research"}
+            </Button>
+          </div>
+        </div>
+      </form>
+    </TooltipProvider>
   );
 }

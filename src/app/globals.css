@@ -7,6 +7,16 @@ body {
 }
 
 @layer base {
+  html, body {
+    @apply h-full;
+  }
+  body {
+    @apply bg-background text-foreground flex flex-col;
+  }
+  main {
+    @apply flex-grow; /* Allows main to fill available space if body is flex col */
+  }
+
   :root {
     --background: 220 22% 95%; /* Light Gray #F0F2F5 */
     --foreground: 220 10% 25%; /* Dark Gray #3A3D45 for text on background */
@@ -103,9 +113,7 @@ body {
 
 @layer base {
   * {
-    @apply border-border;
+    @apply border-border box-border; /* Ensure box-sizing: border-box */
   }
-  body {
-    @apply bg-background text-foreground;
-  }
+  /* body is already handled above */
 }

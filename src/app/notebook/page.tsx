@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Table,
   TableHeader,
@@ -11,12 +11,11 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea"; // For potentially better editing experience
-import { FileText, Trash2, MessageSquare, ChevronDown, ChevronRight, ArrowLeft } from "lucide-react";
-import type { ExtractedEvidenceData } from '@/ai/flows/extract-evidence-flow'; // Import the type
+import { FileText, Trash2, MessageSquare, ChevronDown, ChevronRight, ArrowLeft, Download } from "lucide-react";
+import type { ExtractedEvidenceData } from '@/ai/flows/extract-evidence-flow';
 import Link from 'next/link';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-// Mock data based on ExtractedEvidenceData type
 const initialMockStudies: ExtractedEvidenceData[] = [
   {
     title: "The Impact of Remote Work on Employee Productivity: A Longitudinal Study",
@@ -46,7 +45,6 @@ const initialMockStudies: ExtractedEvidenceData[] = [
     interventionOrTopic: "Application of AI algorithms in diagnostic imaging for cancer",
     methodology: "Systematic Review and Meta-analysis",
     keyResults: "AI models demonstrate comparable or superior accuracy to human experts in identifying cancerous Pxomalies in several imaging modalities.",
-    // quote: "No specific quote available." // Example of optional quote
   },
 ];
 
@@ -56,16 +54,8 @@ export default function NotebookPage() {
   const [editingCell, setEditingCell] = useState<{ rowIndex: number; columnId: keyof ExtractedEvidenceData | 'study' | null } | null>(null);
   const [expandedQuotes, setExpandedQuotes] = useState<Record<number, boolean>>({});
 
-  // In a real app, you'd fetch this data, perhaps based on selected studies or uploaded PDFs
-  // For now, we use mock data.
-  // useEffect(() => {
-  //   // Example: fetchNotebookData().then(data => setStudies(data));
-  // }, []);
 
   const handleCellChange = (rowIndex: number, columnId: keyof ExtractedEvidenceData, value: string) => {
-    // This is a simple in-memory update.
-    // In a real app, you'd likely have a more robust state management (e.g., Zustand, Redux)
-    // and potentially API calls to save changes.
     setStudies(prevStudies =>
       prevStudies.map((study, index) => {
         if (index === rowIndex) {
@@ -90,8 +80,8 @@ export default function NotebookPage() {
     setExpandedQuotes(prev => ({ ...prev, [rowIndex]: !prev[rowIndex] }));
   };
 
-  const renderEditableCell = (rowIndex: number, columnId: keyof ExtractedEvidenceData, value: string | string[] | number) => {
-    const displayValue = Array.isArray(value) ? value.join(', ') : String(value);
+  const renderEditableCell = (rowIndex: number, columnId: keyof ExtractedEvidenceData, value: string | string[] | number | undefined) => {
+    const displayValue = Array.isArray(value) ? value.join(', ') : String(value ?? '');
     return (
       <div
         contentEditable
@@ -101,7 +91,7 @@ export default function NotebookPage() {
           setEditingCell(null);
         }}
         onClick={() => setEditingCell({ rowIndex, columnId })}
-        className={`p-2 min-h-[40px] focus:outline-none focus:ring-2 focus:ring-ring focus:bg-muted/50 rounded-sm ${
+        className={`p-2.5 min-h-[44px] focus:outline-none focus:ring-2 focus:ring-ring focus:bg-muted/50 rounded-md text-sm ${
           editingCell?.rowIndex === rowIndex && editingCell?.columnId === columnId ? 'ring-2 ring-ring bg-muted/50' : 'hover:bg-muted/30'
         }`}
       >
@@ -112,11 +102,11 @@ export default function NotebookPage() {
 
 
   return (
-    <div className="min-h-screen bg-background p-4 sm:p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-6 flex items-center justify-between">
+    <main className="min-h-screen w-full bg-background p-6 md:px-12 md:py-8">
+      <div className="max-w-5xl mx-auto w-full"> {/* Changed from 7xl to 5xl for a bit more constrained view for wide tables */}
+        <div className="mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <Button variant="outline" asChild className="mb-0">
+            <Button variant="outline" asChild className="transition-transform duration-200 ease-in-out hover:scale-105">
               <Link href="/">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to Home
@@ -124,72 +114,76 @@ export default function NotebookPage() {
             </Button>
             <h1 className="text-3xl font-bold text-primary">Deep Dive Notebook</h1>
           </div>
-          <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
+          <Button className="bg-accent hover:bg-accent/90 text-accent-foreground font-semibold transition-all duration-200 ease-in-out hover:scale-105 hover:shadow-lg active:scale-98">
+            <Download className="mr-2 h-4 w-4" />
             Export Notebook
           </Button>
         </div>
         
-        <p className="text-muted-foreground mb-6">
+        <p className="text-muted-foreground mb-8 text-md">
           Review and edit the extracted evidence from your selected studies. Click on any cell to edit its content.
-          Changes are not saved in this demo.
         </p>
 
         {studies.length === 0 ? (
-          <div className="text-center py-12">
-            <FileText size={48} className="mx-auto text-muted-foreground mb-4" />
-            <h2 className="text-xl font-semibold text-foreground mb-2">Your Notebook is Empty</h2>
-            <p className="text-muted-foreground">Add studies or upload documents to start populating your evidence table.</p>
-            <Button asChild className="mt-4">
-              <Link href="/">Go to Search</Link>
-            </Button>
-          </div>
+          <Card className="text-center py-16 shadow-xl rounded-xl">
+            <CardHeader>
+                <FileText size={56} className="mx-auto text-muted-foreground mb-4" />
+                <CardTitle className="text-2xl font-semibold text-foreground mb-2">Your Notebook is Empty</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <p className="text-muted-foreground text-md">Add studies or upload documents to start populating your evidence table.</p>
+                <Button asChild className="mt-6 transition-all duration-200 ease-in-out hover:scale-105 hover:shadow-lg active:scale-98">
+                <Link href="/">Go to Search</Link>
+                </Button>
+            </CardContent>
+          </Card>
         ) : (
-        <div className="overflow-x-auto bg-card p-0 rounded-lg shadow-md border">
+        <div className="overflow-x-auto bg-card p-0 rounded-xl shadow-xl border">
           <Table className="min-w-full">
             <TableHeader className="bg-primary text-primary-foreground">
               <TableRow>
-                <TableHead className="w-[250px] text-primary-foreground">Study</TableHead>
-                <TableHead className="w-[180px] text-primary-foreground">Population / Sample</TableHead>
-                <TableHead className="w-[150px] text-primary-foreground">Intervention / Topic</TableHead>
-                <TableHead className="w-[150px] text-primary-foreground">Methodology</TableHead>
-                <TableHead className="min-w-[300px] text-primary-foreground">Key Results</TableHead>
-                <TableHead className="min-w-[300px] text-primary-foreground">Supporting Quote</TableHead>
-                <TableHead className="w-[120px] text-center text-primary-foreground">Actions</TableHead>
+                <TableHead className="w-[300px] p-4 text-primary-foreground font-semibold text-sm">Study</TableHead>
+                <TableHead className="w-[200px] p-4 text-primary-foreground font-semibold text-sm">Population / Sample</TableHead>
+                <TableHead className="w-[200px] p-4 text-primary-foreground font-semibold text-sm">Intervention / Topic</TableHead>
+                <TableHead className="w-[180px] p-4 text-primary-foreground font-semibold text-sm">Methodology</TableHead>
+                <TableHead className="min-w-[350px] p-4 text-primary-foreground font-semibold text-sm">Key Results</TableHead>
+                <TableHead className="min-w-[350px] p-4 text-primary-foreground font-semibold text-sm">Supporting Quote</TableHead>
+                <TableHead className="w-[130px] p-4 text-center text-primary-foreground font-semibold text-sm">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {studies.map((study, rowIndex) => (
-                <TableRow key={rowIndex} className="group hover:bg-muted/10">
-                  <TableCell className="align-top py-3">
-                    <div className="font-semibold text-primary">{study.title}</div>
-                    <div className="text-xs text-muted-foreground mt-1">
+                <TableRow key={rowIndex} className="group hover:bg-muted/20 transition-colors duration-150">
+                  <TableCell className="align-top py-3 px-4">
+                    <div className="font-semibold text-primary text-md">{study.title}</div>
+                    <div className="text-xs text-muted-foreground mt-1.5">
                       {study.authors.join(', ')} ({study.year})
                     </div>
                   </TableCell>
-                  <TableCell className="align-top py-3">
+                  <TableCell className="align-top p-1.5"> {/* Reduced padding for editable cells */}
                     {renderEditableCell(rowIndex, 'population', study.population)}
                   </TableCell>
-                  <TableCell className="align-top py-3">
+                  <TableCell className="align-top p-1.5">
                     {renderEditableCell(rowIndex, 'interventionOrTopic', study.interventionOrTopic)}
                   </TableCell>
-                  <TableCell className="align-top py-3">
+                  <TableCell className="align-top p-1.5">
                     {renderEditableCell(rowIndex, 'methodology', study.methodology)}
                   </TableCell>
-                  <TableCell className="align-top py-3">
+                  <TableCell className="align-top p-1.5">
                     {renderEditableCell(rowIndex, 'keyResults', study.keyResults)}
                   </TableCell>
-                  <TableCell className="align-top py-3">
+                  <TableCell className="align-top py-3 px-4">
                     {study.quote && study.quote.toLowerCase() !== 'no specific quote available.' ? (
                       <div>
                         <button 
                           onClick={() => toggleQuoteExpansion(rowIndex)}
-                          className="flex items-center text-xs text-accent hover:underline mb-1"
+                          className="flex items-center text-xs text-accent hover:underline mb-1.5 font-medium"
                         >
-                          {expandedQuotes[rowIndex] ? <ChevronDown className="h-3 w-3 mr-1" /> : <ChevronRight className="h-3 w-3 mr-1" />}
+                          {expandedQuotes[rowIndex] ? <ChevronDown className="h-3.5 w-3.5 mr-1" /> : <ChevronRight className="h-3.5 w-3.5 mr-1" />}
                           {expandedQuotes[rowIndex] ? 'Hide' : 'Show'} Quote
                         </button>
                         {expandedQuotes[rowIndex] && (
-                           <blockquote className="mt-1 p-2 border-l-4 border-accent bg-muted/30 text-sm text-muted-foreground rounded-r-sm italic">
+                           <blockquote className="mt-1 p-1.5 border-l-4 border-accent bg-muted/30 text-sm text-muted-foreground rounded-r-md italic">
                             {renderEditableCell(rowIndex, 'quote', study.quote)}
                            </blockquote>
                         )}
@@ -208,16 +202,16 @@ export default function NotebookPage() {
                       <span className="text-xs text-muted-foreground italic">No quote available.</span>
                     )}
                   </TableCell>
-                  <TableCell className="align-top py-3 text-center">
-                    <div className="flex flex-col items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-                      <Button variant="ghost" size="sm" className="h-7 w-full justify-start px-2 text-accent hover:bg-accent/10 hover:text-accent-foreground">
-                        <FileText size={14} className="mr-1.5" /> View Paper
+                  <TableCell className="align-top py-3 px-4 text-center">
+                    <div className="flex flex-col items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                      <Button variant="ghost" size="sm" className="h-8 w-full justify-start px-2.5 text-accent hover:bg-accent/10 hover:text-accent-foreground transition-all duration-150 ease-in-out hover:scale-105 active:scale-98">
+                        <FileText size={14} className="mr-2" /> View Paper
                       </Button>
-                       <Button variant="ghost" size="sm" className="h-7 w-full justify-start px-2 text-accent hover:bg-accent/10 hover:text-accent-foreground">
-                        <MessageSquare size={14} className="mr-1.5" /> Comment
+                       <Button variant="ghost" size="sm" className="h-8 w-full justify-start px-2.5 text-accent hover:bg-accent/10 hover:text-accent-foreground transition-all duration-150 ease-in-out hover:scale-105 active:scale-98">
+                        <MessageSquare size={14} className="mr-2" /> Comment
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => removeStudy(rowIndex)} className="h-7 w-full justify-start px-2 text-destructive hover:bg-destructive/10 hover:text-destructive-foreground">
-                        <Trash2 size={14} className="mr-1.5" /> Remove
+                      <Button variant="ghost" size="sm" onClick={() => removeStudy(rowIndex)} className="h-8 w-full justify-start px-2.5 text-destructive hover:bg-destructive/10 hover:text-destructive-foreground transition-all duration-150 ease-in-out hover:scale-105 active:scale-98">
+                        <Trash2 size={14} className="mr-2" /> Remove
                       </Button>
                     </div>
                   </TableCell>
@@ -228,6 +222,6 @@ export default function NotebookPage() {
         </div>
         )}
       </div>
-    </div>
+    </main>
   );
 }

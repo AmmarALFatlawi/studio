@@ -1,18 +1,17 @@
 
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { generateReport, type GenerateReportInput, type GenerateReportOutput, type StudyData } from '@/ai/flows/generate-report';
-import { ArrowLeft, Edit3, RefreshCw, Clipboard as ClipboardIcon, Download, Copy, Link2, FileText, MessageSquarePlus } from "lucide-react";
+import { ArrowLeft, Edit3, RefreshCw, Clipboard as ClipboardIcon, Download, Copy, Link2, FileText, MessageSquarePlus, FileWarning } from "lucide-react";
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { CommentAssistantDialog } from '@/components/collaboration/CommentAssistantDialog'; // Added import
+import { CommentAssistantDialog } from '@/components/collaboration/CommentAssistantDialog';
 
-// Mock data for studies, similar to ExtractedEvidenceData from notebook
 const mockStudiesInput: StudyData[] = [
   {
     title: "The Impact of Remote Work on Employee Productivity: A Longitudinal Study",
@@ -48,7 +47,6 @@ const mockStudiesInput: StudyData[] = [
 
 const mockResearchTopic = "The impact of modern workplace practices and AI on productivity and well-being.";
 
-// Simple Markdown table to HTML parser
 interface TableData {
   headers: string[];
   rows: string[][];
@@ -57,39 +55,34 @@ interface TableData {
 function parseMarkdownTable(markdown: string): TableData | null {
   if (!markdown) return null;
   const lines = markdown.trim().split('\n');
-  if (lines.length < 2) return null; // Header and separator line needed
+  if (lines.length < 2) return null; 
 
   const headers = lines[0].split('|').map(h => h.trim()).filter(h => h);
-  // Basic check for separator line
   if (!lines[1].includes('---')) return null; 
   
   const rows = lines.slice(2).map(line => 
-    line.split('|').map(cell => cell.trim()).filter((cell, index) => index < headers.length || (index === 0 && cell === '')) // Handle potential empty first cell from leading |
-    .filter((cell, index) => headers[index] !== undefined || cell !== '') // ensure we only take cells for defined headers
+    line.split('|').map(cell => cell.trim()).filter((cell, index) => index < headers.length || (index === 0 && cell === ''))
+    .filter((cell, index) => headers[index] !== undefined || cell !== '')
   ).filter(row => row.length === headers.length && row.some(cell => cell !== ''));
 
-
-  // Filter out rows that don't match header count after initial parse
   const validRows = rows.filter(row => row.length === headers.length);
-
   return { headers, rows: validRows };
 }
-
 
 const RenderedMarkdownTable: React.FC<{ markdown: string }> = ({ markdown }) => {
   const tableData = useMemo(() => parseMarkdownTable(markdown), [markdown]);
 
   if (!tableData || tableData.headers.length === 0) {
-    return <p className="text-muted-foreground italic">Could not render table from Markdown.</p>;
+    return <p className="text-muted-foreground italic text-sm">Could not render table from Markdown.</p>;
   }
 
   return (
-    <div className="overflow-x-auto my-4 border rounded-md">
+    <div className="overflow-x-auto my-4 border border-border rounded-lg shadow">
       <table className="min-w-full divide-y divide-border">
         <thead className="bg-muted/50">
           <tr>
             {tableData.headers.map((header, index) => (
-              <th key={index} className="px-4 py-2 text-left text-sm font-semibold text-foreground tracking-wider">
+              <th key={index} className="px-4 py-3 text-left text-xs font-semibold text-foreground uppercase tracking-wider">
                 {header}
               </th>
             ))}
@@ -97,9 +90,9 @@ const RenderedMarkdownTable: React.FC<{ markdown: string }> = ({ markdown }) => 
         </thead>
         <tbody className="bg-card divide-y divide-border">
           {tableData.rows.map((row, rowIndex) => (
-            <tr key={rowIndex}>
+            <tr key={rowIndex} className="hover:bg-muted/20 transition-colors">
               {row.map((cell, cellIndex) => (
-                <td key={cellIndex} className="px-4 py-2 text-sm text-foreground whitespace-normal">
+                <td key={cellIndex} className="px-4 py-3 text-sm text-foreground whitespace-normal">
                   {cell}
                 </td>
               ))}
@@ -111,20 +104,16 @@ const RenderedMarkdownTable: React.FC<{ markdown: string }> = ({ markdown }) => 
   );
 };
 
-
 export default function ReportComposerPage() {
   const [reportData, setReportData] = useState<GenerateReportOutput | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-
-  // State for Comment Assistant Dialog
   const [isCommentDialogOpen, setIsCommentDialogOpen] = useState(false);
   const [selectedTextForComment, setSelectedTextForComment] = useState("");
-  const MOCK_REPORT_ID = "report-composer-001"; // Example report ID
+  const MOCK_REPORT_ID = "report-composer-001";
 
   const sampleReportSnippet = "The initial findings suggest a strong correlation between daily exercise and improved cognitive scores in the elderly population. However, the study acknowledges limitations regarding the homogeneity of its sample, primarily consisting of retired academics from a single urban center. Future research should aim to replicate these findings in more diverse demographic groups and explore long-term effects beyond a six-month period.";
-
 
   useEffect(() => {
     async function fetchReport() {
@@ -152,39 +141,52 @@ export default function ReportComposerPage() {
     fetchReport();
   }, [toast]);
 
-  const Section: React.FC<{ title: string; content: string | React.ReactNode; onCopy: () => void; onComment?: () => void }> = 
-    ({ title, content, onCopy, onComment }) => (
-    <Card className="mb-6 shadow-md">
-      <CardHeader className="flex flex-row items-center justify-between pb-3">
-        <CardTitle className="text-2xl font-semibold text-primary font-sans">{title}</CardTitle>
-        <div className="flex items-center gap-1">
-          {onComment && (
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" aria-label={`Comment on ${title}`} onClick={onComment}>
-              <MessageSquarePlus size={18} />
-            </Button>
-          )}
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" aria-label={`Edit ${title}`} onClick={() => toast({ title: `Edit ${title}`, description: "This feature is not yet implemented."})}>
-            <Edit3 size={18} />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" aria-label={`Regenerate ${title}`} onClick={() => toast({ title: `Regenerate ${title}`, description: "This feature is not yet implemented."})}>
-            <RefreshCw size={18} />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" aria-label={`Copy ${title}`} onClick={onCopy}>
-            <ClipboardIcon size={18} />
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent>
-        {typeof content === 'string' ? <p className="text-foreground font-serif leading-relaxed whitespace-pre-line">{content}</p> : content}
-      </CardContent>
-    </Card>
-  );
-
-  const copyToClipboard = (text: string, sectionName: string) => {
+  const copyToClipboard = useCallback((text: string, sectionName: string) => {
     navigator.clipboard.writeText(text)
       .then(() => toast({ title: `${sectionName} Copied!`, description: "Content copied to clipboard." }))
       .catch(err => toast({ title: "Copy Failed", description: `Could not copy: ${err}`, variant: "destructive" }));
-  };
+  }, [toast]);
+
+  const downloadFile = useCallback((content: string, fileName: string, mimeType: string) => {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast({ title: `${fileName} Downloaded`, description: "Check your downloads folder." });
+  }, [toast]);
+
+  const generateFullReportMarkdown = useCallback(() => {
+    if (!reportData) return "";
+    return `# Introduction\n\n${reportData.introduction}\n\n## Summary of Evidence\n\n${reportData.summaryOfEvidence}\n\n## Key Results Table\n\n${reportData.keyResultsTableMd}\n\n## Conclusion\n\n${reportData.conclusion}`;
+  }, [reportData]);
+
+  const generateStudiesCsv = useCallback(() => {
+    const headers = "Title,Authors,Year,Study Type,Sample Size,Key Result,Supporting Quote\n";
+    const rows = mockStudiesInput.map(study =>
+      `"${study.title.replace(/"/g, '""')}","${study.authors.join('; ').replace(/"/g, '""')}","${study.year}","${(study.methodology || '').replace(/"/g, '""')}","${(study.population || '').replace(/"/g, '""')}","${study.keyResults.replace(/"/g, '""')}","${(study.quote || '').replace(/"/g, '""')}"`
+    ).join("\n");
+    return headers + rows;
+  }, []);
+
+  const generateStudiesRis = useCallback(() => {
+    return mockStudiesInput.map(study => {
+      let risString = `TY  - JOUR\n`; // Assuming Journal for simplicity
+      risString += `TI  - ${study.title}\n`;
+      study.authors.forEach(author => {
+        risString += `AU  - ${author}\n`;
+      });
+      risString += `PY  - ${study.year}\n`;
+      // JO (Journal) and KW (Keywords) are not in StudyData, so omitted
+      risString += `ER  - \n`;
+      return risString;
+    }).join("\n");
+  }, []);
+
 
   const handleOpenCommentDialog = (text: string) => {
     setSelectedTextForComment(text);
@@ -199,125 +201,155 @@ export default function ReportComposerPage() {
     tag: string;
     userIntent: string;
   }) => {
-    // In a real app, you'd send this to a backend or state management
     console.log("Comment to save:", commentData);
-    // For now, just log it. The dialog will show a toast.
   };
+
+  const Section: React.FC<{ title: string; content: string | React.ReactNode; onCopy: () => void; onComment?: () => void }> = 
+    ({ title, content, onCopy, onComment }) => (
+    <Card className="mb-8 shadow-xl rounded-xl">
+      <CardHeader className="flex flex-row items-center justify-between pb-4 p-6 border-b">
+        <CardTitle className="text-2xl font-semibold text-primary">{title}</CardTitle>
+        <div className="flex items-center gap-1.5">
+          {onComment && (
+            <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-primary transition-colors" aria-label={`Comment on ${title}`} onClick={onComment}>
+              <MessageSquarePlus size={20} />
+            </Button>
+          )}
+          <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-primary transition-colors" aria-label={`Edit ${title}`} onClick={() => toast({ title: `Edit ${title}`, description: "This feature is not yet implemented."})}>
+            <Edit3 size={20} />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-primary transition-colors" aria-label={`Regenerate ${title}`} onClick={() => toast({ title: `Regenerate ${title}`, description: "This feature is not yet implemented."})}>
+            <RefreshCw size={20} />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-primary transition-colors" aria-label={`Copy ${title}`} onClick={onCopy}>
+            <ClipboardIcon size={20} />
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="p-6">
+        {typeof content === 'string' ? <p className="text-foreground/90 font-serif text-base md:text-lg leading-relaxed whitespace-pre-line">{content}</p> : content}
+      </CardContent>
+    </Card>
+  );
 
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background p-4 sm:p-8">
-        <div className="max-w-4xl mx-auto">
-          <Skeleton className="h-8 w-1/4 mb-4" /> {/* Back button skeleton */}
-          <Skeleton className="h-10 w-1/2 mb-8" /> {/* Page title skeleton */}
+      <main className="min-h-screen w-full bg-background flex flex-col items-center justify-center p-6 md:p-8">
+        <div className="w-full max-w-3xl">
+          <Skeleton className="h-10 w-1/4 mb-6" /> 
+          <Skeleton className="h-12 w-3/5 mb-10" />
           {Array.from({ length: 4 }).map((_, i) => (
-            <Card key={i} className="mb-6 shadow-md">
-              <CardHeader>
+            <Card key={i} className="mb-8 shadow-xl rounded-xl">
+              <CardHeader className="p-6 border-b">
                 <Skeleton className="h-8 w-1/3 mb-2" />
-                <div className="flex gap-2">
-                  <Skeleton className="h-8 w-8 rounded-full" />
-                  <Skeleton className="h-8 w-8 rounded-full" />
-                  <Skeleton className="h-8 w-8 rounded-full" />
+                <div className="flex gap-2 mt-2">
+                  <Skeleton className="h-9 w-9 rounded-md" />
+                  <Skeleton className="h-9 w-9 rounded-md" />
+                  <Skeleton className="h-9 w-9 rounded-md" />
                 </div>
               </CardHeader>
-              <CardContent>
-                <Skeleton className="h-6 w-full mb-2" />
-                <Skeleton className="h-6 w-full mb-2" />
-                <Skeleton className="h-6 w-3/4" />
+              <CardContent className="p-6">
+                <Skeleton className="h-6 w-full mb-3" />
+                <Skeleton className="h-6 w-full mb-3" />
+                <Skeleton className="h-6 w-4/5" />
               </CardContent>
             </Card>
           ))}
         </div>
-      </div>
+      </main>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-background p-4 sm:p-8 flex flex-col items-center justify-center">
-        <FileText size={48} className="text-destructive mb-4" />
-        <h2 className="text-2xl font-semibold text-destructive mb-2">Report Generation Failed</h2>
-        <p className="text-muted-foreground mb-6 text-center max-w-md">{error}</p>
-        <Button asChild>
+      <main className="min-h-screen w-full bg-background flex flex-col items-center justify-center text-center p-6 md:p-8">
+        <FileWarning size={64} className="text-destructive mb-6" />
+        <h2 className="text-3xl font-semibold text-destructive mb-3">Report Generation Failed</h2>
+        <p className="text-lg text-muted-foreground mb-8 max-w-md">{error}</p>
+        <Button asChild className="transition-all duration-200 ease-in-out hover:scale-105 hover:shadow-lg active:scale-98">
           <Link href="/">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Go Back Home
+            <ArrowLeft className="mr-2 h-5 w-5" /> Go Back Home
           </Link>
         </Button>
-      </div>
+      </main>
     );
   }
 
   if (!reportData) {
      return (
-      <div className="min-h-screen bg-background p-4 sm:p-8 flex flex-col items-center justify-center">
-        <FileText size={48} className="text-muted-foreground mb-4" />
-        <h2 className="text-2xl font-semibold text-foreground mb-2">No Report Data</h2>
-        <p className="text-muted-foreground mb-6">Could not load report data. Please try again.</p>
-         <Button asChild>
+      <main className="min-h-screen w-full bg-background flex flex-col items-center justify-center text-center p-6 md:p-8">
+        <FileText size={64} className="text-muted-foreground mb-6" />
+        <h2 className="text-3xl font-semibold text-foreground mb-3">No Report Data</h2>
+        <p className="text-lg text-muted-foreground mb-8">Could not load report data. Please try again.</p>
+         <Button asChild className="transition-all duration-200 ease-in-out hover:scale-105 hover:shadow-lg active:scale-98">
           <Link href="/">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Go Back Home
+            <ArrowLeft className="mr-2 h-5 w-5" /> Go Back Home
           </Link>
         </Button>
-      </div>
+      </main>
     );
   }
 
-
   return (
-    <div className="min-h-screen bg-background p-4 sm:p-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <main className="min-h-screen w-full bg-background p-6 md:px-12 md:py-8">
+      <div className="max-w-3xl mx-auto">
+        <div className="mb-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
           <div>
-            <Button variant="outline" asChild className="mb-2 sm:mb-0">
-              <Link href="/notebook"> {/* Or back to where studies were selected from */}
+            <Button variant="outline" asChild className="mb-3 sm:mb-0 transition-transform duration-200 ease-in-out hover:scale-105">
+              <Link href="/notebook"> 
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to Notebook
               </Link>
             </Button>
-            <h1 className="text-3xl font-bold text-primary font-sans mt-2">Generated Research Report</h1>
-            <p className="text-muted-foreground font-sans">Review, edit, and export your AI-generated report below.</p>
+            <h1 className="text-4xl font-bold text-primary mt-2">Generated Research Report</h1>
+            <p className="text-md text-muted-foreground mt-1">Review, edit, and export your AI-generated report.</p>
           </div>
-          <div className="flex flex-col sm:flex-row gap-2 mt-4 sm:mt-0 self-start sm:self-center">
-            <Button variant="outline" className="text-accent border-accent hover:bg-accent/10 hover:text-accent-foreground" onClick={() => toast({ title: "Publish Link", description: "This feature is not yet implemented."})}>
+          <div className="flex flex-col sm:flex-row gap-2.5 mt-4 sm:mt-0 self-start sm:self-center w-full sm:w-auto">
+            <Button variant="outline" className="text-accent border-accent hover:bg-accent/10 hover:text-accent-foreground font-medium w-full sm:w-auto transition-all duration-200 ease-in-out hover:scale-105 hover:shadow-md active:scale-98" onClick={() => toast({ title: "Publish Link", description: "This feature is not yet implemented."})}>
               <Link2 className="mr-2 h-4 w-4" /> Publish Link
             </Button>
-            <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" onClick={() => toast({ title: "Download PDF", description: "This feature is not yet implemented."})}>
+            <Button className="bg-accent hover:bg-accent/90 text-accent-foreground font-medium w-full sm:w-auto transition-all duration-200 ease-in-out hover:scale-105 hover:shadow-md active:scale-98" onClick={() => toast({ title: "Download PDF", description: "This feature is not yet implemented."})}>
               <Download className="mr-2 h-4 w-4" /> Download PDF
-            </Button>
-            <Button onClick={() => copyToClipboard(
-              `# Introduction\n\n${reportData.introduction}\n\n## Summary of Evidence\n\n${reportData.summaryOfEvidence}\n\n## Key Results Table\n\n${reportData.keyResultsTableMd}\n\n## Conclusion\n\n${reportData.conclusion}`,
-              "Full Report Markdown"
-            )}>
-              <Copy className="mr-2 h-4 w-4" /> Copy Markdown
             </Button>
           </div>
         </div>
+        
+        <div className="flex flex-wrap gap-2 mb-10">
+            <Button variant="outline" size="sm" onClick={() => copyToClipboard(generateFullReportMarkdown(), "Full Report Markdown")} className="transition-all duration-200 ease-in-out hover:scale-105 active:scale-98">
+              <Copy className="mr-2 h-4 w-4" /> Copy Full Markdown
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => downloadFile(generateStudiesCsv(), 'contvia_evidence_table.csv', 'text/csv;charset=utf-8;')} className="transition-all duration-200 ease-in-out hover:scale-105 active:scale-98">
+              <Download className="mr-2 h-4 w-4" /> Download Evidence (CSV)
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => downloadFile(generateStudiesRis(), 'contvia_citations.ris', 'application/x-research-info-systems')} className="transition-all duration-200 ease-in-out hover:scale-105 active:scale-98">
+              <Download className="mr-2 h-4 w-4" /> Download Citations (RIS)
+            </Button>
+        </div>
 
-        <Separator className="my-6" />
 
-        {/* Sample Report Snippet for Commenting */}
-        <Card className="mb-6 shadow-md">
-            <CardHeader>
-                <CardTitle className="text-xl font-semibold text-primary font-sans">Sample Report Snippet</CardTitle>
-                <CardDescription>Use this snippet to test the AI Comment Assistant.</CardDescription>
+        <Separator className="my-8" />
+
+        <Card className="mb-8 shadow-xl rounded-xl">
+            <CardHeader className="p-6 border-b">
+                <CardTitle className="text-xl font-semibold text-primary">Sample Report Snippet</CardTitle>
+                <CardDescription className="text-sm">Use this snippet to test the AI Comment Assistant.</CardDescription>
             </CardHeader>
-            <CardContent>
-                <p className="text-foreground font-serif leading-relaxed whitespace-pre-line mb-4">
+            <CardContent className="p-6">
+                <p className="text-foreground/90 font-serif text-base md:text-lg leading-relaxed whitespace-pre-line mb-4">
                     {sampleReportSnippet}
                 </p>
                 <Button 
                     variant="outline" 
                     onClick={() => handleOpenCommentDialog(sampleReportSnippet)}
-                    className="text-accent border-accent hover:bg-accent/10 hover:text-accent-foreground"
+                    className="text-accent border-accent hover:bg-accent/10 hover:text-accent-foreground font-medium transition-all duration-200 ease-in-out hover:scale-105 active:scale-98"
                 >
                     <MessageSquarePlus className="mr-2 h-4 w-4" /> Comment on this Snippet
                 </Button>
             </CardContent>
         </Card>
 
-        <Separator className="my-6" />
-
+        <Separator className="my-8" />
 
         <Section 
           title="Introduction" 
@@ -335,7 +367,6 @@ export default function ReportComposerPage() {
           title="Key Results Table" 
           content={<RenderedMarkdownTable markdown={reportData.keyResultsTableMd} />}
           onCopy={() => copyToClipboard(reportData.keyResultsTableMd, "Key Results Table")}
-          // Commenting on a table might be complex, omitting for now
         />
         <Section 
           title="Conclusion" 
@@ -343,7 +374,6 @@ export default function ReportComposerPage() {
           onCopy={() => copyToClipboard(reportData.conclusion, "Conclusion")}
           onComment={() => handleOpenCommentDialog(reportData.conclusion)}
         />
-
       </div>
 
       {selectedTextForComment && (
@@ -355,7 +385,6 @@ export default function ReportComposerPage() {
             onCommentSave={handleSaveComment}
         />
       )}
-    </div>
+    </main>
   );
 }
-
