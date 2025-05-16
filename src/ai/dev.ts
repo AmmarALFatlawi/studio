@@ -6,4 +6,7 @@ import '@/ai/flows/generate-report.ts';
 import '@/ai/flows/refine-query.ts';
 import '@/ai/flows/extract-data.ts';
 import '@/ai/flows/smart-search-flow.ts';
-import '@/ai/flows/extract-evidence-flow.ts'; // Added new evidence extraction flow
+import '@/ai/flows/extract-evidence-flow.ts'; 
+
+// Ensure all flows are imported so Genkit can discover them.
+// The generate-report flow has been updated, so this import is still correct.
