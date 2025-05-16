@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Search, Network, Paperclip, ArrowRightCircle } from "lucide-react"; // Added ArrowRightCircle
+import { Network, Paperclip, ArrowRightCircle } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -97,18 +97,8 @@ export function ResearchForm({ handleSearch, handleResearch }: ResearchFormProps
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-2 pt-3">
-                <Button
-                  type="submit"
-                  variant="outline"
-                  size="sm"
-                  className="font-semibold border-accent text-accent hover:bg-accent hover:text-accent-foreground focus-visible:ring-accent"
-                  disabled={isSearchPending || isResearchPending}
-                  aria-label="Perform a standard search"
-                >
-                  <Search className="mr-1.5 h-4 w-4" />
-                  {isSearchPending ? "Searching..." : "Search"}
-                </Button>
+              <div className="flex flex-col sm:flex-row gap-2 pt-3 justify-center">
+                {/* Search button removed as per request */}
                 <Button
                   type="button"
                   variant="secondary"
