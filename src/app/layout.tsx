@@ -1,3 +1,4 @@
+
 import type {Metadata} from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
@@ -14,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'ScholarAI',
-  description: 'AI-Powered Research Assistant by Firebase Studio',
+  title: 'Contvia',
+  description: 'Contvia - Your AI-Powered Research Assistant',
 };
 
 export default function RootLayout({
