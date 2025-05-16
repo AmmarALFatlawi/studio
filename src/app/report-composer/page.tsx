@@ -3,13 +3,14 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { generateReport, type GenerateReportInput, type GenerateReportOutput, type StudyData } from '@/ai/flows/generate-report';
-import { ArrowLeft, Edit3, RefreshCw, Clipboard as ClipboardIcon, Download, Copy, Link2, FileText } from "lucide-react";
+import { ArrowLeft, Edit3, RefreshCw, Clipboard as ClipboardIcon, Download, Copy, Link2, FileText, MessageSquarePlus } from "lucide-react";
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
+import { CommentAssistantDialog } from '@/components/collaboration/CommentAssistantDialog'; // Added import
 
 // Mock data for studies, similar to ExtractedEvidenceData from notebook
 const mockStudiesInput: StudyData[] = [
@@ -117,6 +118,14 @@ export default function ReportComposerPage() {
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
+  // State for Comment Assistant Dialog
+  const [isCommentDialogOpen, setIsCommentDialogOpen] = useState(false);
+  const [selectedTextForComment, setSelectedTextForComment] = useState("");
+  const MOCK_REPORT_ID = "report-composer-001"; // Example report ID
+
+  const sampleReportSnippet = "The initial findings suggest a strong correlation between daily exercise and improved cognitive scores in the elderly population. However, the study acknowledges limitations regarding the homogeneity of its sample, primarily consisting of retired academics from a single urban center. Future research should aim to replicate these findings in more diverse demographic groups and explore long-term effects beyond a six-month period.";
+
+
   useEffect(() => {
     async function fetchReport() {
       setIsLoading(true);
@@ -143,18 +152,24 @@ export default function ReportComposerPage() {
     fetchReport();
   }, [toast]);
 
-  const Section: React.FC<{ title: string; content: string | React.ReactNode; onCopy: () => void }> = ({ title, content, onCopy }) => (
+  const Section: React.FC<{ title: string; content: string | React.ReactNode; onCopy: () => void; onComment?: () => void }> = 
+    ({ title, content, onCopy, onComment }) => (
     <Card className="mb-6 shadow-md">
       <CardHeader className="flex flex-row items-center justify-between pb-3">
         <CardTitle className="text-2xl font-semibold text-primary font-sans">{title}</CardTitle>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" aria-label="Edit section" onClick={() => toast({ title: "Edit Section", description: "This feature is not yet implemented."})}>
+        <div className="flex items-center gap-1">
+          {onComment && (
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" aria-label={`Comment on ${title}`} onClick={onComment}>
+              <MessageSquarePlus size={18} />
+            </Button>
+          )}
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" aria-label={`Edit ${title}`} onClick={() => toast({ title: `Edit ${title}`, description: "This feature is not yet implemented."})}>
             <Edit3 size={18} />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" aria-label="Regenerate section" onClick={() => toast({ title: "Regenerate Section", description: "This feature is not yet implemented."})}>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" aria-label={`Regenerate ${title}`} onClick={() => toast({ title: `Regenerate ${title}`, description: "This feature is not yet implemented."})}>
             <RefreshCw size={18} />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" aria-label="Copy section to clipboard" onClick={onCopy}>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" aria-label={`Copy ${title}`} onClick={onCopy}>
             <ClipboardIcon size={18} />
           </Button>
         </div>
@@ -170,6 +185,25 @@ export default function ReportComposerPage() {
       .then(() => toast({ title: `${sectionName} Copied!`, description: "Content copied to clipboard." }))
       .catch(err => toast({ title: "Copy Failed", description: `Could not copy: ${err}`, variant: "destructive" }));
   };
+
+  const handleOpenCommentDialog = (text: string) => {
+    setSelectedTextForComment(text);
+    setIsCommentDialogOpen(true);
+  };
+
+  const handleSaveComment = (commentData: {
+    reportId: string;
+    originalSelection: string;
+    comment: string;
+    suggestedEdit?: string;
+    tag: string;
+    userIntent: string;
+  }) => {
+    // In a real app, you'd send this to a backend or state management
+    console.log("Comment to save:", commentData);
+    // For now, just log it. The dialog will show a toast.
+  };
+
 
   if (isLoading) {
     return (
@@ -262,30 +296,66 @@ export default function ReportComposerPage() {
 
         <Separator className="my-6" />
 
+        {/* Sample Report Snippet for Commenting */}
+        <Card className="mb-6 shadow-md">
+            <CardHeader>
+                <CardTitle className="text-xl font-semibold text-primary font-sans">Sample Report Snippet</CardTitle>
+                <CardDescription>Use this snippet to test the AI Comment Assistant.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <p className="text-foreground font-serif leading-relaxed whitespace-pre-line mb-4">
+                    {sampleReportSnippet}
+                </p>
+                <Button 
+                    variant="outline" 
+                    onClick={() => handleOpenCommentDialog(sampleReportSnippet)}
+                    className="text-accent border-accent hover:bg-accent/10 hover:text-accent-foreground"
+                >
+                    <MessageSquarePlus className="mr-2 h-4 w-4" /> Comment on this Snippet
+                </Button>
+            </CardContent>
+        </Card>
+
+        <Separator className="my-6" />
+
+
         <Section 
           title="Introduction" 
           content={reportData.introduction} 
           onCopy={() => copyToClipboard(reportData.introduction, "Introduction")}
+          onComment={() => handleOpenCommentDialog(reportData.introduction)}
         />
         <Section 
           title="Summary of Evidence" 
           content={reportData.summaryOfEvidence} 
           onCopy={() => copyToClipboard(reportData.summaryOfEvidence, "Summary of Evidence")}
+          onComment={() => handleOpenCommentDialog(reportData.summaryOfEvidence)}
         />
         <Section 
           title="Key Results Table" 
           content={<RenderedMarkdownTable markdown={reportData.keyResultsTableMd} />}
           onCopy={() => copyToClipboard(reportData.keyResultsTableMd, "Key Results Table")}
+          // Commenting on a table might be complex, omitting for now
         />
         <Section 
           title="Conclusion" 
           content={reportData.conclusion}
           onCopy={() => copyToClipboard(reportData.conclusion, "Conclusion")}
+          onComment={() => handleOpenCommentDialog(reportData.conclusion)}
         />
 
       </div>
+
+      {selectedTextForComment && (
+        <CommentAssistantDialog
+            isOpen={isCommentDialogOpen}
+            onOpenChange={setIsCommentDialogOpen}
+            selectedContent={selectedTextForComment}
+            reportId={MOCK_REPORT_ID}
+            onCommentSave={handleSaveComment}
+        />
+      )}
     </div>
   );
 }
 
-CDATA
