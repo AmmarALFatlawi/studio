@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Search, Network, Paperclip } from "lucide-react";
+import { Search, Network, Paperclip, ArrowRightCircle } from "lucide-react"; // Added ArrowRightCircle
 import { useToast } from '@/hooks/use-toast';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -68,20 +68,18 @@ export function ResearchForm({ handleSearch, handleResearch }: ResearchFormProps
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6 p-6 sm:p-8">
-          {/* "What do you want to explore?" text removed from here */}
           <form ref={formRef} onSubmit={onFormSubmit} className="space-y-4">
-            {/* Main container for input, buttons, and icons */}
             <div className="rounded-lg border bg-card p-3 shadow-sm">
               <Label htmlFor="query-input" className="text-xs text-muted-foreground px-1">Ask anything...</Label>
               <div className="flex items-center mt-1">
-                <Search className="h-5 w-5 text-muted-foreground ml-1 mr-2 flex-shrink-0" /> 
+                <ArrowRightCircle className="h-5 w-5 text-muted-foreground ml-1 mr-2 flex-shrink-0" /> 
                 <Input
                   id="query-input"
                   type="text"
                   name="query"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="" // Visually handled by the Label
+                  placeholder="" 
                   className="flex-grow border-0 focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none p-1 text-base h-auto"
                   aria-label="Research query input"
                 />
@@ -99,7 +97,6 @@ export function ResearchForm({ handleSearch, handleResearch }: ResearchFormProps
                 </div>
               </div>
 
-              {/* Buttons below input, inside the same card structure */}
               <div className="flex flex-col sm:flex-row gap-2 pt-3">
                 <Button
                   type="submit"
