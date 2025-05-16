@@ -35,10 +35,49 @@ const SmartSearchOutputSchema = z.object({
 });
 export type SmartSearchOutput = z.infer<typeof SmartSearchOutputSchema>;
 
+// Mock data to return
+const mockStudies: Study[] = [
+  {
+    title: "Mock Study 1: The Effects of Sunshine on Mood",
+    authors: ["Dr. Sunny Day", "Dr. Ray Light"],
+    year: 2023,
+    studyType: "Observational Study",
+    sampleSize: "500 adults",
+    keyFindings: "Exposure to at least 30 minutes of sunshine daily was correlated with improved mood scores. Further research is needed to establish causation.",
+    supportingQuote: "Participants reporting daily sunshine exposure had a 20% higher average mood rating (p < 0.05)."
+  },
+  {
+    title: "Mock Study 2: AI in Future Education - A Review",
+    authors: ["Prof. Ada Byte", "Dr. Alan Bit"],
+    year: 2024,
+    studyType: "Literature Review",
+    sampleSize: "75 papers reviewed",
+    keyFindings: "Artificial intelligence shows significant potential to personalize learning and automate administrative tasks in education. Ethical considerations and teacher training are crucial for successful implementation.",
+    supportingQuote: "No specific quote available."
+  },
+  {
+    title: "Mock Study 3: The Impact of Caffeine on Short-Term Memory",
+    authors: ["Dr. Java Bean", "Dr. Mocha Latte"],
+    year: 2022,
+    studyType: "Randomized Controlled Trial (RCT)",
+    sampleSize: "120 university students",
+    keyFindings: "A moderate dose of caffeine (200mg) significantly improved performance on short-term memory recall tasks compared to a placebo group. The effect was most pronounced within the first hour of consumption.",
+    supportingQuote: "The caffeine group demonstrated a 15% average improvement in recall accuracy (p < 0.01) on the standardized memory test."
+  }
+];
+
+
 export async function smartSearch(input: SmartSearchInput): Promise<SmartSearchOutput> {
-  return smartSearchFlow(input);
+  // Simulate a short delay as if an API call was made
+  await new Promise(resolve => setTimeout(resolve, 500));
+  
+  // Return mock data instead of calling the LLM
+  console.log(`Mock smartSearch called with query: "${input.userQuery}". Returning mock studies.`);
+  return { studies: mockStudies };
 }
 
+// Commenting out the actual LLM call for now
+/*
 const smartSearchPrompt = ai.definePrompt({
   name: 'smartSearchPrompt',
   input: {schema: SmartSearchInputSchema},
@@ -102,3 +141,11 @@ const smartSearchFlow = ai.defineFlow(
     return { studies: output.studies || [] };
   }
 );
+*/
+
+// Keep the original flow structure for when API key is available, but export the mock function for now.
+// To re-enable API calls, you would uncomment the above and change the export:
+// export async function smartSearch(input: SmartSearchInput): Promise<SmartSearchOutput> {
+//   return smartSearchFlow(input);
+// }
+
