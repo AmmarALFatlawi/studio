@@ -50,26 +50,44 @@ export async function generateReport(input: GenerateReportInput): Promise<Genera
 
   const introText = `This report critically examines the research topic: "${input.researchTopic}". It synthesizes findings from ${input.studies.length} key studies to provide a comprehensive overview of the current evidence base. The importance of this topic stems from its potential impact on public health and technological advancement. This investigation aims to clarify the existing knowledge landscape.`;
   
+  const study1Title = input.studies[0]?.title || 'Example Study 1: Effect of Sunlight on Mood';
+  const study1Year = input.studies[0]?.year || 2023;
+  const study1Methodology = input.studies[0]?.methodology || 'RCT';
+  const study1Population = input.studies[0]?.population || '100 Adults';
+  const study1KeyResults = input.studies[0]?.keyResults || 'Increased exposure to sunlight correlated with improved mood scores.';
+
+  const study2Title = input.studies[1]?.title || 'Example Study 2: AI in Education Review';
+  const study2Year = input.studies[1]?.year || 2024;
+  const study2Methodology = input.studies[1]?.methodology || 'Literature Review';
+  const study2Population = input.studies[1]?.population || 'N/A (Review)';
+  const study2KeyResults = input.studies[1]?.keyResults || 'AI shows potential to personalize learning but ethical concerns remain.';
+  
+  const study3Title = input.studies[2]?.title || 'Example Study 3: Caffeine & Memory Boost';
+  const study3Year = input.studies[2]?.year || 2022;
+  const study3Methodology = input.studies[2]?.methodology || 'Meta-analysis';
+  const study3Population = input.studies[2]?.population || 'University Students';
+  const study3KeyResults = input.studies[2]?.keyResults || 'Moderate caffeine intake linked to short-term memory improvement in students.';
+
+
   return {
     introduction: introText.length > 100 ? introText.substring(0, introText.lastIndexOf(' ', 97)) + '...' : introText,
-    summaryOfEvidence: `The collected evidence, derived from ${input.studies.length} studies, presents several key themes. A significant portion of the research, notably from studies like "${input.studies[0]?.title || 'Example Study 1'}" and others employing ${input.studies[0]?.methodology || 'robust methodologies'}, points towards a positive correlation between X and Y. For instance, two studies highlighted the impact of intervention A. Conversely, some evidence, such as from "${input.studies[1]?.title || 'Example Study 2'}", suggests a nuance regarding population B, indicating that results may vary.`,
+    summaryOfEvidence: `The collected evidence, derived from ${input.studies.length} studies, presents several key themes. A significant portion of the research, notably from studies like "${study1Title}" and others employing ${study1Methodology}, points towards a positive correlation between X and Y. For instance, two studies highlighted the impact of intervention A. Conversely, some evidence, such as from "${study2Title}", suggests a nuance regarding population B, indicating that results may vary.`,
     keyResultsTableMd: `
 | Study                                                    | Methodology                      | Population                               | Key Result                                                                                      |
 | :------------------------------------------------------- | :------------------------------- | :--------------------------------------- | :------------------------------------------------------------------------------------------ |
-| ${input.studies[0]?.title || 'Effect of Sunlight on Mood'} (${input.studies[0]?.year || 2023})            | ${input.studies[0]?.methodology || 'RCT'}                     | ${input.studies[0]?.population || '100 Adults'}            | ${input.studies[0]?.keyResults || 'Increased exposure to sunlight correlated with improved mood scores.'}                   |
-| ${input.studies[1]?.title || 'AI in Education Review'} (${input.studies[1]?.year || 2024})                | ${input.studies[1]?.methodology || 'Literature Review'}      | ${input.studies[1]?.population || 'N/A (Review)'}          | ${input.studies[1]?.keyResults || 'AI shows potential to personalize learning but ethical concerns remain.'}                |
-| ${input.studies[2]?.title || 'Caffeine & Memory Boost'} (${input.studies[2]?.year || 2022})                | ${input.studies[2]?.methodology || 'Meta-analysis'}          | ${input.studies[2]?.population || 'University Students'}   | ${input.studies[2]?.keyResults || 'Moderate caffeine intake linked to short-term memory improvement in students.'} |
+| ${study1Title} (${study1Year})            | ${study1Methodology}                     | ${study1Population}            | ${study1KeyResults}                   |
+| ${study2Title} (${study2Year})                | ${study2Methodology}      | ${study2Population}          | ${study2KeyResults}                |
+| ${study3Title} (${study3Year})                | ${study3Methodology}          | ${study3Population}   | ${study3KeyResults} |
 `,
     conclusion: `In conclusion, the available evidence largely supports the efficacy of intervention X in population Y. However, the landscape is nuanced, with variations observed in studies employing different methodologies. Gaps in the current research include a lack of long-term longitudinal studies and studies on diverse demographic groups. Future research should prioritize addressing these gaps to provide a more complete understanding.`
   };
+  // return generateReportFlow(input); // Uncomment when ready to use actual AI.
 }
+
 
 /*
 // To re-enable API calls, uncomment the prompt and flow definitions below,
-// and change the export:
-// export async function generateReport(input: GenerateReportInput): Promise<GenerateReportOutput> {
-//   return generateReportFlow(input);
-// }
+// and ensure the exported generateReport function calls generateReportFlow(input).
 
 const generateReportPrompt = ai.definePrompt({
   name: 'generateReportPrompt',
@@ -109,9 +127,11 @@ The report must include the following clearly separated sections:
     Keep it readable for non-experts.
 
 3.  **Key Results Table** (Markdown table format)
-    The table should have these columns: "Study" (include Title and Year), "Methodology", "Population", "Key Result".
-    Select 2-4 of the most relevant or impactful studies for this table.
-    Example Markdown Table Format:
+    The table should have these columns: "Study" (formatted as "Title (Year)"), "Methodology", "Population", "Key Result".
+    Select 2-4 of the most relevant or impactful studies from the provided "Extracted Data from Studies" for this table.
+    Ensure the "Study" column combines the study's title and year, e.g., "The Effect of Sleep on Cognition (2023)".
+
+    Example Markdown Table Format (Ensure your output matches this structure):
     | Study                                   | Methodology   | Population         | Key Result                                          |
     | :-------------------------------------- | :------------ | :----------------- | :-------------------------------------------------- |
     | The Effect of Sleep on Cognition (2023) | RCT           | Adults aged 40–65  | 15% increase in memory recall for 7+ hour sleepers. |
@@ -123,15 +143,15 @@ The report must include the following clearly separated sections:
     Use academic but simple tone.
 
 Ensure the output is a valid JSON object strictly adhering to the output schema.
-The keyResultsTableMd field must be a string containing a valid Markdown table.
+The keyResultsTableMd field must be a string containing a valid Markdown table with the specified columns and "Study" column format.
 Avoid any conversational preamble or sign-off.
 
-Example of desired output structure (content will vary based on input):
+Few-shot Output Sample:
 {
-  "introduction": "This report explores the relationship between sleep duration and cognitive performance in adults, a key area of interest in neuroscience and aging research. Understanding this link is crucial for public health initiatives.",
-  "summaryOfEvidence": "Across five studies, longer sleep duration (typically >7 hours) is associated with measurable improvements in memory recall and processing speed. Four of the studies used randomized controlled trials, while one employed cross-sectional analysis. One study showed no significant improvement, suggesting individual variability or confounding factors like age or pre-existing conditions.",
-  "keyResultsTableMd": "| Study                                   | Methodology   | Population         | Key Result                                          |\\n| :-------------------------------------- | :------------ | :----------------- | :-------------------------------------------------- |\\n| The Effect of Sleep on Cognition (2023) | RCT           | Adults aged 40–65  | 15% increase in memory recall...                |\\n| Sleep & Brain Health (2022)             | Meta-analysis | University Students| Combined data shows 12–18% cognitive boost.   |",
-  "conclusion": "The evidence suggests a positive relationship between longer sleep and improved cognitive function in adults. However, variations in study design and population size highlight the need for further large-scale longitudinal research, particularly in diverse demographic groups."
+  "introduction": "This report explores the relationship between sleep duration and cognitive performance in adults, a key area of interest in neuroscience and aging research. Understanding this link is crucial for public health initiatives aimed at promoting healthy aging and cognitive well-being.",
+  "summaryOfEvidence": "Across five studies reviewed, longer sleep duration (typically defined as >7 hours per night) is consistently associated with measurable improvements in cognitive functions such as memory recall and processing speed. Four of these studies utilized randomized controlled trial (RCT) methodologies, providing strong evidence for a causal link. One cross-sectional analysis also supported this trend. However, one study focusing on a very specific elderly cohort with pre-existing sleep disorders showed no significant improvement, suggesting that the benefits of extended sleep might be moderated by underlying health conditions or age-related factors.",
+  "keyResultsTableMd": "| Study                                   | Methodology   | Population         | Key Result                                          |\\n| :-------------------------------------- | :------------ | :----------------- | :-------------------------------------------------- |\\n| The Effect of Sleep on Cognition (2023) | RCT           | Adults aged 40–65  | Participants sleeping over 7 hours showed a 15% average increase in memory recall tests compared to the control group. |\\n| Sleep & Brain Health: A Meta-Analysis (2022)             | Meta-analysis | University Students (18-25 years) | Combined data from 12 studies (N=1500) indicates a 12–18% improvement in cognitive processing speed with optimal sleep.       |\\n| Cognitive Benefits of Napping (2021)    | Experimental  | Shift Workers      | Short naps (20-30 mins) improved alertness and reaction time significantly during night shifts. |",
+  "conclusion": "The evidence robustly suggests a positive and significant relationship between adequate sleep duration and enhanced cognitive function in adult populations. Future research should focus on longitudinal studies to understand long-term impacts and explore interventions for specific populations, such as those with chronic illnesses or demanding work schedules, to optimize cognitive health through sleep."
 }
 `,
 });
@@ -147,7 +167,7 @@ const generateReportFlow = ai.defineFlow(
     if (!output) {
       throw new Error('Report generation failed: LLM did not return a valid structured output.');
     }
-    // Ensure markdown table newlines are correctly escaped for JSON string
+    // Ensure markdown table newlines are correctly escaped if they come from LLM as \\n
     if (output.keyResultsTableMd) {
         output.keyResultsTableMd = output.keyResultsTableMd.replace(/\\n/g, '\n');
     }
