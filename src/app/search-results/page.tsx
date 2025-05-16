@@ -31,7 +31,7 @@ export default function SearchResultsPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('summary');
   const [sortBy, setSortBy] = useState<SortByType>('relevance');
 
-  useEffect(()_ => {
+  useEffect(() => {
     async function fetchData() {
       const currentQuery = refinedQuery || query;
       if (!currentQuery) {
@@ -58,7 +58,7 @@ export default function SearchResultsPage() {
     fetchData();
   }, [query, refinedQuery, errorParam]);
 
-  const sortedResults = useMemo(()_ => {
+  const sortedResults = useMemo(() => {
     let sorted = [...results];
     switch (sortBy) {
       case 'year_desc':
