@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Download, Eye, ListFilter, FileWarning, BarChartHorizontalBig, ServerCrash } from 'lucide-react';
+import { ArrowLeft, Download, Eye, ListFilter, FileWarning, BarChartHorizontalBig, ServerCrash, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -103,7 +103,7 @@ function SearchResultsContent() {
       } catch (e: any) {
         console.error("Error fetching search results:", e);
         let errorMessage = `Failed to fetch search results: ${e.message || 'Unknown error'}`;
-        if (e.code === 'functions/internal' || e.message === 'internal') {
+        if (e.code === 'functions/internal' || e.message === 'internal' || e.code === 'internal') {
             errorMessage = "Failed to fetch search results: An internal server error occurred with the search service.";
             if (e.details) {
                 errorMessage += ` Details: ${JSON.stringify(e.details)}`;
@@ -269,7 +269,7 @@ function SearchResultsContent() {
                       <div>
                         <CardTitle className="text-red-600 text-lg">Error Fetching Results</CardTitle>
                         <CardDescription className="text-slate-600">
-                          {error.includes("Details:") ? error.substring(error.indexOf("Details:") + "Details:".length).trim() : "The search service encountered an issue."}
+                          {error.includes("Details:") ? error.substring(error.indexOf("Details:") + "Details:".length).trim() : "The AI model or external APIs might be unable to process this query or there could be a temporary issue."}
                         </CardDescription>
                       </div>
                   </CardHeader>
@@ -384,4 +384,3 @@ export default function SearchResultsPage() {
   );
 }
 
-    
