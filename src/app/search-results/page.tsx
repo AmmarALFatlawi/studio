@@ -7,24 +7,24 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Download, Eye, ListFilter, FileWarning, BarChartHorizontalBig } from 'lucide-react';
+import { ArrowLeft, Download, Eye, ListFilter, FileWarning, BarChartHorizontalBig, ServerCrash } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import ClientOnly from '@/lib/ClientOnly';
 import { motion } from 'framer-motion';
 
-// Firebase imports for calling the callable function
-import { httpsCallable, type HttpsCallable } from "firebase/functions";
-import { functions as firebaseFunctionsApp } from '@/lib/firebase'; // Import initialized Firebase functions
+// Firebase imports
+import { getFunctions, httpsCallable, type HttpsCallable, type HttpsCallableResult } from "firebase/functions";
+import { functions as firebaseFunctionsApp } from '@/lib/firebase';
 
 type ViewMode = 'summary' | 'detailed';
 type SortByType = 'relevance' | 'year_desc' | 'year_asc' | 'study_type';
 
-// Define NormalizedPaper interface matching Firebase function output
-interface NormalizedPaper {
+// This matches the NormalizedPaper interface in your Firebase Function
+export interface NormalizedPaper {
   title: string;
   authors: string[];
   year: number | null;
@@ -49,21 +49,34 @@ export default function SearchResultsPage() {
   const query = useMemo(() => searchParams.get('query'), [searchParams]);
   const refinedQuery = useMemo(() => searchParams.get('refinedQuery'), [searchParams]);
   const errorParam = useMemo(() => searchParams.get('error'), [searchParams]);
-  const dataSource = useMemo(() => searchParams.get('dataSource'), [searchParams]); // Check for dataSource parameter
+  const dataSource = useMemo(() => searchParams.get('dataSource'), [searchParams]);
+
+  const mapNormalizedPaperToStudy = useCallback((paper: NormalizedPaper): Study => {
+    return {
+      title: paper.title || "Untitled",
+      authors: paper.authors || [],
+      year: paper.year ?? new Date().getFullYear(), // Default to current year if null
+      studyType: paper.source || "N/A", // Use source as studyType or a specific field if available
+      sampleSize: "N/A", // This field is not in NormalizedPaper, adjust as needed
+      keyFindings: paper.abstract || "No abstract available.", // Use abstract as keyFindings
+      supportingQuote: undefined, // This field is not in NormalizedPaper
+      // You might want to add doi and pdf_link to Study if you plan to use them directly
+    };
+  }, []);
 
   useEffect(() => {
     if (errorParam && !initialErrorParamProcessed) {
       const specificError = errorParam === 'refinement_failed' 
         ? 'Query refinement failed. Using original query for search.' 
         : 'An unknown error occurred during refinement.';
-      setError(specificError); // Show refinement error but still proceed with fetch
+      setError(specificError); 
       setInitialErrorParamProcessed(true);
     }
 
     async function fetchData() {
       const currentQuery = refinedQuery || query;
       if (!currentQuery) {
-        if (!(errorParam && initialErrorParamProcessed)) { // only set no query error if there wasn't already an errorParam shown
+        if (!(errorParam && initialErrorParamProcessed)) {
             setError("No query provided.");
         }
         setIsLoading(false);
@@ -71,7 +84,6 @@ export default function SearchResultsPage() {
         return;
       }
 
-      // Clear previous fetch errors only if not showing an errorParam like refinement_failed
       if (!(errorParam && initialErrorParamProcessed)) {
           setError(null); 
       }
@@ -79,51 +91,51 @@ export default function SearchResultsPage() {
       
       try {
         if (dataSource === 'firebase') {
-          // Call the Firebase Function
-          const searchPapersUnified: HttpsCallable<{ query: string; limit?: number }, NormalizedPaper[]> = 
+          console.log(`Fetching from Firebase for query: ${currentQuery}`);
+          const searchPapersUnifiedCallable: HttpsCallable<{ query: string; limit?: number }, NormalizedPaper[]> = 
             httpsCallable(firebaseFunctionsApp, "searchPapersUnified");
           
-          console.log(`Fetching from Firebase for query: ${currentQuery}`);
-          const response = await searchPapersUnified({ query: currentQuery, limit: 20 }); // Adjust limit as needed
-          const papers = response.data as NormalizedPaper[];
+          const response: HttpsCallableResult<NormalizedPaper[]> = await searchPapersUnifiedCallable({ query: currentQuery, limit: 20 });
+          const papers = response.data;
           
-          // Map NormalizedPaper to Study
-          setResults(papers.map(paper => ({
-            title: paper.title || "Untitled",
-            authors: paper.authors || [],
-            year: paper.year ?? new Date().getFullYear(), // Default to current year if null
-            studyType: paper.source || "N/A", // Use source as studyType
-            sampleSize: "N/A", // Not available from NormalizedPaper directly
-            keyFindings: paper.abstract || "No abstract available.", // Use abstract as keyFindings
-            supportingQuote: undefined, // Not available from current NormalizedPaper
-          })));
+          setResults(papers.map(mapNormalizedPaperToStudy));
         } else {
-          // Original Genkit smartSearch flow
           console.log(`Fetching from Genkit smartSearch for query: ${currentQuery}`);
           const response = await smartSearch({ userQuery: currentQuery });
           setResults(response.studies || []);
         }
       } catch (e: any) {
         console.error("Error fetching search results:", e);
-        setError(`Failed to fetch search results: ${e.message || 'Unknown error'}`);
+        let errorMessage = `Failed to fetch search results: ${e.message || 'Unknown error'}`;
+        if (e.code === 'functions/internal' || e.message === 'internal') {
+            errorMessage = "Failed to fetch search results: An internal server error occurred with the search service.";
+            if (e.details) {
+                errorMessage += ` Details: ${JSON.stringify(e.details)}`;
+            }
+        } else if (e.code) { // Other Firebase HttpsError codes
+             errorMessage = `Failed to fetch search results: ${e.code} - ${e.message}`;
+             if (e.details) {
+                errorMessage += ` Details: ${JSON.stringify(e.details)}`;
+            }
+        }
+        setError(errorMessage);
         setResults([]);
       } finally {
         setIsLoading(false);
       }
     }
 
-    // Ensure we proceed with fetch even if only errorParam was set (e.g. refinement failed, but still want to search)
     if (query || refinedQuery) {
         fetchData();
     } else if (!errorParam) { 
         setError("No query provided.");
         setIsLoading(false);
         setResults([]);
-    } else { // Only errorParam is present, means no query was provided with it.
-        setIsLoading(false); // Stop loading if we only had an errorParam and no actual query
+    } else { 
+        setIsLoading(false); 
     }
     
-  }, [query, refinedQuery, errorParam, searchParams, initialErrorParamProcessed, dataSource]); // Added dataSource
+  }, [query, refinedQuery, errorParam, dataSource, initialErrorParamProcessed, mapNormalizedPaperToStudy]);
 
 
   const sortedResults = useMemo(() => {
@@ -140,8 +152,6 @@ export default function SearchResultsPage() {
         break;
       case 'relevance':
       default:
-        // For Firebase results, true relevance sorting would happen in the function.
-        // For mock Genkit data, it's already "relevant".
         break;
     }
     return sorted;
@@ -157,8 +167,8 @@ export default function SearchResultsPage() {
         </CardHeader>
         <CardContent className="p-0 space-y-3">
           <div className="flex space-x-2">
-            <Skeleton className="h-7 w-24 rounded-full" />
-            <Skeleton className="h-7 w-28 rounded-full" />
+            <Skeleton className="h-7 w-24 rounded-full bg-green-600/10" />
+            <Skeleton className="h-7 w-28 rounded-full bg-green-600/10" />
           </div>
           <Skeleton className="h-5 w-full" />
           <Skeleton className="h-12 w-full" />
@@ -187,7 +197,7 @@ export default function SearchResultsPage() {
 
           {(query || refinedQuery || (error && !error.startsWith("Failed to fetch search results"))) && (
             <Card className="w-full bg-white rounded-2xl shadow-lg mb-8 p-6">
-              <CardHeader className="p-0"> {/* Removed pb-4 for tighter layout */}
+              <CardHeader className="p-0">
                 <CardTitle className="text-sm sm:text-base font-semibold text-primary mb-3">Search Details</CardTitle>
               </CardHeader>
               <CardContent className="p-0 space-y-3">
@@ -257,13 +267,19 @@ export default function SearchResultsPage() {
           </div>
           
           {error && error.startsWith("Failed to fetch search results") && (
-              <Card className="w-full bg-white rounded-2xl shadow-lg mb-6 border-red-500/50">
-                  <CardHeader className="p-6">
-                      <CardTitle className="text-red-600 flex items-center text-lg"><FileWarning className="mr-2 h-5 w-5"/> Error Fetching Results</CardTitle>
+              <Card className="w-full bg-white rounded-2xl shadow-lg mb-6 border border-red-500/50">
+                  <CardHeader className="p-6 flex flex-row items-center gap-3">
+                      <ServerCrash className="h-8 w-8 text-red-600" />
+                      <div>
+                        <CardTitle className="text-red-600 text-lg">Error Fetching Results</CardTitle>
+                        <CardDescription className="text-slate-600">The search service encountered an issue.</CardDescription>
+                      </div>
                   </CardHeader>
                   <CardContent className="px-6 pb-6">
-                      <p className="text-slate-700 font-medium">{error}</p>
-                      <p className="text-sm text-slate-500 mt-2">The AI model or external APIs might be unable to process this query or there could be a temporary issue. Please try a different query or try again later.</p>
+                      <p className="text-slate-700 font-medium text-sm bg-red-50 p-3 rounded-md border border-red-200">{error}</p>
+                      <p className="text-xs text-slate-500 mt-3">
+                        This might be due to a temporary issue with the external academic APIs or the search service itself. Please try a different query or try again in a few moments. If the problem persists, check the server logs for more details.
+                      </p>
                   </CardContent>
               </Card>
           )}
@@ -282,7 +298,7 @@ export default function SearchResultsPage() {
             <div className="grid gap-6">
               {sortedResults.map((study, index) => (
                 <motion.div
-                  key={study.title + index + study.year} // Add year for better key uniqueness
+                  key={study.title + index + study.year} 
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.4 }}
@@ -290,7 +306,13 @@ export default function SearchResultsPage() {
                 >
                   <Card className="w-full bg-white rounded-2xl shadow-lg p-6 transition-all hover:shadow-2xl duration-300 ease-in-out flex flex-col">
                     <CardHeader className="p-0 pb-3">
-                      <a href={study.supportingQuote || '#'} target="_blank" rel="noopener noreferrer" className="hover:underline" onClick={(e) => { if (!study.supportingQuote) e.preventDefault(); }} > {/* Using supportingQuote as a placeholder for pdf_link */}
+                      <a 
+                        href={ (study as any).pdf_link || ( (study as any).doi ? `https://doi.org/${(study as any).doi}` : '#') } // Assuming pdf_link or doi might be on study
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="hover:underline" 
+                        onClick={(e) => { if (!(study as any).pdf_link && !(study as any).doi) e.preventDefault(); }} 
+                      >
                         <CardTitle className="text-xl font-semibold text-[#0B1F3A] hover:text-[#0B1F3A]/80 transition-colors">{study.title}</CardTitle>
                       </a>
                       <CardDescription className="text-sm text-slate-600 pt-1">
@@ -335,7 +357,7 @@ export default function SearchResultsPage() {
                         variant="link" 
                         size="sm" 
                         className="text-green-600 hover:text-green-700 hover:underline font-medium px-0 transition-all duration-200 ease-in-out hover:scale-105 active:scale-98"
-                        onClick={() => console.log('Save/Export clicked for:', study.title)} // Placeholder action
+                        onClick={() => console.log('Save/Export clicked for:', study.title)} 
                       >
                         <Download className="mr-1.5 h-4 w-4 text-green-600" />
                         Save/Export
@@ -351,3 +373,4 @@ export default function SearchResultsPage() {
     </ClientOnly>
   );
 }
+
