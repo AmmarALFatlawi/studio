@@ -39,18 +39,23 @@ export default function SearchResultsPage() {
         ? 'Query refinement failed. Using original query for search.' 
         : 'An unknown error occurred during refinement.';
       setError(specificError);
-      setInitialErrorParamProcessed(true);
+      setInitialErrorParamProcessed(true); // Mark as processed
     }
 
     async function fetchData() {
+      // Use the current query, prioritizing refinedQuery if it exists
       const currentQuery = refinedQuery || query;
       if (!currentQuery) {
-        setError("No query provided.");
+        // Only set "No query provided" if there wasn't an errorParam already processed
+        if (!(errorParam && initialErrorParamProcessed)) {
+            setError("No query provided.");
+        }
         setIsLoading(false);
         setResults([]);
         return;
       }
 
+      // Clear previous errors only if we are not already displaying an errorParam-related message
       if (!(errorParam && initialErrorParamProcessed)) {
           setError(null); 
       }
@@ -68,6 +73,8 @@ export default function SearchResultsPage() {
       }
     }
 
+    // Only fetch data if there's a query and no initial error is being displayed
+    // Or if an error was processed, but we still have a query to attempt.
     if (query || refinedQuery) {
         fetchData();
     } else if (!errorParam) { 
@@ -75,10 +82,11 @@ export default function SearchResultsPage() {
         setIsLoading(false);
         setResults([]);
     } else {
+        // If there was an errorParam but no query, just ensure loading is false.
         setIsLoading(false);
     }
     
-  }, [query, refinedQuery, errorParam, searchParams, initialErrorParamProcessed]);
+  }, [query, refinedQuery, errorParam, searchParams, initialErrorParamProcessed]); // Added searchParams to dependencies
 
 
   const sortedResults = useMemo(() => {
@@ -95,6 +103,7 @@ export default function SearchResultsPage() {
         break;
       case 'relevance':
       default:
+        // Assuming mock data is already relevance-sorted or no specific client-side relevance sort.
         break;
     }
     return sorted;
@@ -104,11 +113,11 @@ export default function SearchResultsPage() {
   const renderSkeletons = () => (
     Array.from({ length: 3 }).map((_, i) => (
       <Card key={`skeleton-${i}`} className="w-full shadow-lg rounded-lg mb-6">
-        <CardHeader>
+        <CardHeader className="p-6">
           <Skeleton className="h-7 w-3/4" />
           <Skeleton className="h-5 w-1/2 mt-2" />
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 px-6 pb-4">
           <div className="flex space-x-2">
             <Skeleton className="h-7 w-24" />
             <Skeleton className="h-7 w-28" />
@@ -117,7 +126,7 @@ export default function SearchResultsPage() {
           <Skeleton className="h-16 w-full" />
           <Skeleton className="h-10 w-full" />
         </CardContent>
-        <CardFooter>
+        <CardFooter className="p-6 pt-0">
           <Skeleton className="h-9 w-28" />
         </CardFooter>
       </Card>
@@ -137,22 +146,22 @@ export default function SearchResultsPage() {
 
           <Card className="w-full shadow-xl rounded-xl mb-8">
             <CardHeader className="p-6">
-              <CardTitle className="text-2xl sm:text-3xl font-semibold text-primary">Search Details</CardTitle>
+              <CardTitle className="text-sm sm:text-base font-semibold text-primary">Search Details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 px-6 pb-6">
               {query && (
                 <div>
-                  <h3 className="font-semibold text-lg text-foreground mb-1">Original Query:</h3>
-                  <p className="text-muted-foreground bg-muted p-3 rounded-md shadow-sm">{query}</p>
+                  <h3 className="font-semibold text-md text-foreground mb-1">Original Query:</h3>
+                  <p className="text-muted-foreground bg-muted p-3 rounded-md shadow-sm text-sm">{query}</p>
                 </div>
               )}
               {refinedQuery && (
                 <div>
-                  <h3 className="font-semibold text-lg text-foreground mb-1">Refined Query (AI):</h3>
-                  <p className="text-muted-foreground bg-muted p-3 rounded-md shadow-sm">{refinedQuery}</p>
+                  <h3 className="font-semibold text-md text-foreground mb-1">Refined Query (AI):</h3>
+                  <p className="text-muted-foreground bg-muted p-3 rounded-md shadow-sm text-sm">{refinedQuery}</p>
                 </div>
               )}
-              {error && !error.startsWith("Failed to fetch search results") && (
+              {error && !error.startsWith("Failed to fetch search results") && ( // Only show query-related errors here
                   <CardDescription className="text-destructive pt-2 text-sm">
                     {error}
                   </CardDescription>
@@ -214,7 +223,7 @@ export default function SearchResultsPage() {
 
           {isLoading ? (
             renderSkeletons()
-          ) : !error && sortedResults.length === 0 ? (
+          ) : !error && sortedResults.length === 0 ? ( // Changed condition to not show "No studies found" if there's a fetch error
             <Card className="w-full shadow-lg rounded-xl">
               <CardContent className="p-8 text-center text-muted-foreground">
                 <FileWarning className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
