@@ -1,12 +1,12 @@
 
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { generateReport, type GenerateReportInput, type GenerateReportOutput, type StudyData } from '@/ai/flows/generate-report';
-import { ArrowLeft, Edit3, RefreshCw, Clipboard as ClipboardIcon, Download, Copy, Link2, FileText, MessageSquarePlus, FileWarning } from "lucide-react";
+import { ArrowLeft, Edit3, RefreshCw, Clipboard as ClipboardIcon, Download, Copy, Link2, FileText, MessageSquarePlus, FileWarning, Loader2 } from "lucide-react";
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
@@ -104,7 +104,8 @@ const RenderedMarkdownTable: React.FC<{ markdown: string }> = ({ markdown }) => 
   );
 };
 
-export default function ReportComposerPage() {
+
+function ReportComposerContent() {
   const [reportData, setReportData] = useState<GenerateReportOutput | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -175,13 +176,12 @@ export default function ReportComposerPage() {
 
   const generateStudiesRis = useCallback(() => {
     return mockStudiesInput.map(study => {
-      let risString = `TY  - JOUR\n`; // Assuming Journal for simplicity
+      let risString = `TY  - JOUR\n`; 
       risString += `TI  - ${study.title}\n`;
       study.authors.forEach(author => {
         risString += `AU  - ${author}\n`;
       });
       risString += `PY  - ${study.year}\n`;
-      // JO (Journal) and KW (Keywords) are not in StudyData, so omitted
       risString += `ER  - \n`;
       return risString;
     }).join("\n");
@@ -388,3 +388,18 @@ export default function ReportComposerPage() {
     </main>
   );
 }
+
+export default function ReportComposerPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background p-6">
+        <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+        <p className="text-muted-foreground">Loading report composer...</p>
+      </div>
+    }>
+      <ReportComposerContent />
+    </Suspense>
+  );
+}
+
+    

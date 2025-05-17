@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import {
   Table,
   TableHeader,
@@ -11,7 +11,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { FileText, Trash2, MessageSquare, ChevronDown, ChevronRight, ArrowLeft, Download } from "lucide-react";
+import { FileText, Trash2, MessageSquare, ChevronDown, ChevronRight, ArrowLeft, Download, Loader2 } from "lucide-react";
 import type { ExtractedEvidenceData } from '@/ai/flows/extract-evidence-flow';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -48,8 +48,7 @@ const initialMockStudies: ExtractedEvidenceData[] = [
   },
 ];
 
-
-export default function NotebookPage() {
+function NotebookContent() {
   const [studies, setStudies] = useState<ExtractedEvidenceData[]>(initialMockStudies);
   const [editingCell, setEditingCell] = useState<{ rowIndex: number; columnId: keyof ExtractedEvidenceData | 'study' | null } | null>(null);
   const [expandedQuotes, setExpandedQuotes] = useState<Record<number, boolean>>({});
@@ -103,7 +102,7 @@ export default function NotebookPage() {
 
   return (
     <main className="min-h-screen w-full bg-background p-6 md:px-12 md:py-8">
-      <div className="max-w-5xl mx-auto w-full"> {/* Changed from 7xl to 5xl for a bit more constrained view for wide tables */}
+      <div className="max-w-5xl mx-auto w-full"> 
         <div className="mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Button variant="outline" asChild className="transition-transform duration-200 ease-in-out hover:scale-105">
@@ -160,7 +159,7 @@ export default function NotebookPage() {
                       {study.authors.join(', ')} ({study.year})
                     </div>
                   </TableCell>
-                  <TableCell className="align-top p-1.5"> {/* Reduced padding for editable cells */}
+                  <TableCell className="align-top p-1.5"> 
                     {renderEditableCell(rowIndex, 'population', study.population)}
                   </TableCell>
                   <TableCell className="align-top p-1.5">
@@ -225,3 +224,19 @@ export default function NotebookPage() {
     </main>
   );
 }
+
+
+export default function NotebookPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background p-6">
+        <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+        <p className="text-muted-foreground">Loading notebook...</p>
+      </div>
+    }>
+      <NotebookContent />
+    </Suspense>
+  );
+}
+
+    

@@ -1,6 +1,8 @@
 
 "use client";
 
+import { Suspense, useEffect, useState, useMemo, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import type { Study } from '@/ai/flows/smart-search-flow';
 import { smartSearch } from '@/ai/flows/smart-search-flow';
 import { Button } from '@/components/ui/button';
@@ -9,11 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, Download, Eye, ListFilter, FileWarning, BarChartHorizontalBig, ServerCrash } from 'lucide-react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
-import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import ClientOnly from '@/lib/ClientOnly';
 import { motion } from 'framer-motion';
 
 // Firebase imports
@@ -23,7 +22,6 @@ import { functions as firebaseFunctionsApp } from '@/lib/firebase';
 type ViewMode = 'summary' | 'detailed';
 type SortByType = 'relevance' | 'year_desc' | 'year_asc' | 'study_type';
 
-// This matches the NormalizedPaper interface in your Firebase Function
 export interface NormalizedPaper {
   title: string;
   authors: string[];
@@ -35,8 +33,7 @@ export interface NormalizedPaper {
   citation_count: number | null;
 }
 
-
-export default function SearchResultsPage() {
+function SearchResultsContent() {
   const searchParams = useSearchParams();
   
   const [results, setResults] = useState<Study[]>([]);
@@ -55,12 +52,11 @@ export default function SearchResultsPage() {
     return {
       title: paper.title || "Untitled",
       authors: paper.authors || [],
-      year: paper.year ?? new Date().getFullYear(), // Default to current year if null
-      studyType: paper.source || "N/A", // Use source as studyType or a specific field if available
-      sampleSize: "N/A", // This field is not in NormalizedPaper, adjust as needed
-      keyFindings: paper.abstract || "No abstract available.", // Use abstract as keyFindings
-      supportingQuote: undefined, // This field is not in NormalizedPaper
-      // You might want to add doi and pdf_link to Study if you plan to use them directly
+      year: paper.year ?? new Date().getFullYear(),
+      studyType: paper.source || "N/A", 
+      sampleSize: "N/A", 
+      keyFindings: paper.abstract || "No abstract available.",
+      supportingQuote: undefined, 
     };
   }, []);
 
@@ -112,7 +108,7 @@ export default function SearchResultsPage() {
             if (e.details) {
                 errorMessage += ` Details: ${JSON.stringify(e.details)}`;
             }
-        } else if (e.code) { // Other Firebase HttpsError codes
+        } else if (e.code) { 
              errorMessage = `Failed to fetch search results: ${e.code} - ${e.message}`;
              if (e.details) {
                 errorMessage += ` Details: ${JSON.stringify(e.details)}`;
@@ -135,7 +131,7 @@ export default function SearchResultsPage() {
         setIsLoading(false); 
     }
     
-  }, [query, refinedQuery, errorParam, dataSource, initialErrorParamProcessed, mapNormalizedPaperToStudy]);
+  }, [query, refinedQuery, errorParam, dataSource, initialErrorParamProcessed, mapNormalizedPaperToStudy, searchParams]);
 
 
   const sortedResults = useMemo(() => {
@@ -152,6 +148,7 @@ export default function SearchResultsPage() {
         break;
       case 'relevance':
       default:
+        // Assuming results are already relevance-sorted from the API/Genkit flow
         break;
     }
     return sorted;
@@ -181,7 +178,6 @@ export default function SearchResultsPage() {
   );
 
   return (
-    <ClientOnly>
       <main className="min-h-screen w-full bg-background flex flex-col items-center px-6 py-8">
         <div className="w-full max-w-6xl">
           <Button 
@@ -272,7 +268,9 @@ export default function SearchResultsPage() {
                       <ServerCrash className="h-8 w-8 text-red-600" />
                       <div>
                         <CardTitle className="text-red-600 text-lg">Error Fetching Results</CardTitle>
-                        <CardDescription className="text-slate-600">The search service encountered an issue.</CardDescription>
+                        <CardDescription className="text-slate-600">
+                          {error.includes("Details:") ? error.substring(error.indexOf("Details:") + "Details:".length).trim() : "The search service encountered an issue."}
+                        </CardDescription>
                       </div>
                   </CardHeader>
                   <CardContent className="px-6 pb-6">
@@ -307,7 +305,7 @@ export default function SearchResultsPage() {
                   <Card className="w-full bg-white rounded-2xl shadow-lg p-6 transition-all hover:shadow-2xl duration-300 ease-in-out flex flex-col">
                     <CardHeader className="p-0 pb-3">
                       <a 
-                        href={ (study as any).pdf_link || ( (study as any).doi ? `https://doi.org/${(study as any).doi}` : '#') } // Assuming pdf_link or doi might be on study
+                        href={ (study as any).pdf_link || ( (study as any).doi ? `https://doi.org/${(study as any).doi}` : '#') } 
                         target="_blank" 
                         rel="noopener noreferrer" 
                         className="hover:underline" 
@@ -370,7 +368,20 @@ export default function SearchResultsPage() {
           )}
         </div>
       </main>
-    </ClientOnly>
   );
 }
 
+export default function SearchResultsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background p-6">
+        <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+        <p className="text-muted-foreground">Loading search results...</p>
+      </div>
+    }>
+      <SearchResultsContent />
+    </Suspense>
+  );
+}
+
+    
