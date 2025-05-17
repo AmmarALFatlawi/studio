@@ -5,8 +5,7 @@ import type { FormEvent } from 'react';
 import { useState, useTransition, useRef } from 'react';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-// import { Label } from "@/components/ui/label"; // Removed Label import
-import { Plus, Search, SearchCode, ArrowUp } from "lucide-react";
+import { Plus, Search, SearchCode, ArrowUp } from "lucide-react"; // Keep Search icon if used elsewhere, or remove if not. For now, keeping it.
 import { useToast } from '@/hooks/use-toast';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -48,13 +47,13 @@ export function ResearchForm({ handleSearch, handleResearch }: ResearchFormProps
   const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
-      // Enter triggers search only if query is not empty
-      if (query.trim()) {
+      // Enter triggers search only if query is not empty or a file is selected
+      if (query.trim() || (fileInputRef.current && fileInputRef.current.files && fileInputRef.current.files.length > 0)) {
          handleSubmitLogic('search');
       } else {
          toast({
-            title: "Query Required",
-            description: "Please enter a research question to submit.",
+            title: "Query or File Required",
+            description: "Please enter a research question or upload a file to submit.",
             variant: "destructive",
         });
       }
@@ -72,8 +71,6 @@ export function ResearchForm({ handleSearch, handleResearch }: ResearchFormProps
         title: "File Selected",
         description: `${fileName} selected. You can now use 'Deep Research'.`,
       });
-      // Optionally, you could automatically trigger deep research if a file is selected.
-      // For now, it just makes the file available in the form.
     }
   };
 
@@ -95,9 +92,6 @@ export function ResearchForm({ handleSearch, handleResearch }: ResearchFormProps
     <TooltipProvider>
       <form ref={formRef} onSubmit={onFormSubmit} className="w-full">
         <div className="bg-card text-card-foreground rounded-2xl shadow-xl p-4 sm:p-5 w-full">
-          {/* <Label htmlFor="query-input" className="text-sm font-medium text-muted-foreground px-1 block mb-2">
-            Ask anything
-          </Label> */} {/* Label removed */}
           <div className="relative flex items-center">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
             <Input
@@ -116,7 +110,7 @@ export function ResearchForm({ handleSearch, handleResearch }: ResearchFormProps
           <input 
             type="file" 
             ref={fileInputRef} 
-            name="document" // Added name attribute for FormData
+            name="document"
             style={{ display: 'none' }} 
             accept=".pdf,.doc,.docx,.txt" 
             onChange={handleFileSelected}
@@ -142,17 +136,7 @@ export function ResearchForm({ handleSearch, handleResearch }: ResearchFormProps
                 </TooltipContent>
               </Tooltip>
 
-              <Button
-                type="button"
-                variant="outline" // Kept as outline per previous design
-                size="sm"
-                className="font-medium rounded-full px-4 transition-all duration-200 ease-in-out hover:scale-105 hover:shadow-md active:scale-95"
-                onClick={() => handleSubmitLogic('search')}
-                disabled={isResearchPending || (!query.trim() && (!fileInputRef.current || !fileInputRef.current.files || fileInputRef.current.files.length === 0))}
-                aria-label="Perform a quick search"
-              >
-                <Search className="mr-1.5 h-4 w-4 shrink-0" /> Search
-              </Button>
+              {/* Search button removed based on user request */}
 
               <Button
                 type="button"
@@ -172,7 +156,7 @@ export function ResearchForm({ handleSearch, handleResearch }: ResearchFormProps
               <TooltipTrigger asChild>
                 <Button
                   type="submit"
-                  variant="default" // Using default variant for primary action
+                  variant="default" 
                   size="icon"
                   className="h-9 w-9 rounded-full shrink-0 bg-primary text-primary-foreground transition-all duration-200 ease-in-out hover:scale-105 hover:shadow-md active:scale-95"
                   aria-label="Submit query"
@@ -182,7 +166,7 @@ export function ResearchForm({ handleSearch, handleResearch }: ResearchFormProps
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Submit query (Search)</p>
+                <p>Submit query</p>
               </TooltipContent>
             </Tooltip>
           </div>
