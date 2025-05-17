@@ -5,7 +5,7 @@ import type { FormEvent } from 'react';
 import { useState, useTransition, useRef } from 'react';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Search, SearchCode, ArrowUp } from "lucide-react"; // Keep Search icon if used elsewhere, or remove if not. For now, keeping it.
+import { Plus, SearchCode, ArrowUp } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -33,8 +33,7 @@ export function ResearchForm({ handleSearch, handleResearch }: ResearchFormProps
     
     if (!formRef.current) return;
     const formData = new FormData(formRef.current);
-    // formData.set('query', query); // Query is already part of form through input name="query"
-
+    
     if (action === 'search') {
       handleSearch(formData);
     } else if (action === 'research') {
@@ -47,7 +46,6 @@ export function ResearchForm({ handleSearch, handleResearch }: ResearchFormProps
   const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
-      // Enter triggers search only if query is not empty or a file is selected
       if (query.trim() || (fileInputRef.current && fileInputRef.current.files && fileInputRef.current.files.length > 0)) {
          handleSubmitLogic('search');
       } else {
@@ -71,13 +69,15 @@ export function ResearchForm({ handleSearch, handleResearch }: ResearchFormProps
         title: "File Selected",
         description: `${fileName} selected. You can now use 'Deep Research'.`,
       });
+      // Optionally, you could update the UI to show the selected file name
     }
   };
 
+  // This function is called when the form is submitted by pressing Enter in the input
+  // or by clicking the primary submit button (ArrowUp).
   const onFormSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    // Default submit (e.g. via ArrowUp button) triggers 'search'
-     if (query.trim() || (fileInputRef.current && fileInputRef.current.files && fileInputRef.current.files.length > 0)) {
+    if (query.trim() || (fileInputRef.current && fileInputRef.current.files && fileInputRef.current.files.length > 0)) {
       handleSubmitLogic('search');
     } else {
       toast({
@@ -91,9 +91,9 @@ export function ResearchForm({ handleSearch, handleResearch }: ResearchFormProps
   return (
     <TooltipProvider>
       <form ref={formRef} onSubmit={onFormSubmit} className="w-full">
-        <div className="bg-card text-card-foreground rounded-2xl shadow-xl p-4 sm:p-5 w-full">
+        <div className="bg-card text-card-foreground rounded-2xl shadow-xl p-3 sm:p-4">
           <div className="relative flex items-center">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
+            {/* Removed explicit Label "Ask anything..." */}
             <Input
               id="query-input"
               type="text"
@@ -102,7 +102,7 @@ export function ResearchForm({ handleSearch, handleResearch }: ResearchFormProps
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleInputKeyDown}
               placeholder="Ask anything..."
-              className="w-full bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none pl-10 pr-3 py-3 text-lg h-auto" 
+              className="w-full bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none pl-3 pr-10 py-3 text-lg h-auto"
               aria-label="Research query input"
             />
           </div>
@@ -114,6 +114,7 @@ export function ResearchForm({ handleSearch, handleResearch }: ResearchFormProps
             style={{ display: 'none' }} 
             accept=".pdf,.doc,.docx,.txt" 
             onChange={handleFileSelected}
+            aria-label="Upload document"
           />
 
           <div className="flex flex-wrap items-center justify-between gap-2 mt-3 sm:mt-4">
@@ -135,19 +136,18 @@ export function ResearchForm({ handleSearch, handleResearch }: ResearchFormProps
                   <p>Upload document (PDF, DOC, TXT)</p>
                 </TooltipContent>
               </Tooltip>
-
-              {/* Search button removed based on user request */}
+              
+              {/* "Search" button removed as per user request */}
 
               <Button
                 type="button"
-                variant="secondary" 
-                size="sm"
-                className="font-medium rounded-full px-4 transition-all duration-200 ease-in-out hover:scale-105 hover:shadow-md active:scale-95"
+                variant="secondary"
+                className="font-medium rounded-full px-2 h-7 text-xs transition-all duration-200 ease-in-out hover:scale-105 hover:shadow-md active:scale-95"
                 onClick={() => handleSubmitLogic('research')}
                 disabled={isResearchPending || (!query.trim() && (!fileInputRef.current || !fileInputRef.current.files || fileInputRef.current.files.length === 0))}
                 aria-label="Perform an AI-enhanced deep research"
               >
-                <SearchCode className="mr-1.5 h-4 w-4 shrink-0" />
+                <SearchCode className="mr-1 h-3 w-3 shrink-0" />
                 {isResearchPending ? "Researching..." : "Deep Research"}
               </Button>
             </div>
@@ -155,7 +155,7 @@ export function ResearchForm({ handleSearch, handleResearch }: ResearchFormProps
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
-                  type="submit"
+                  type="submit" // This makes it the default submit button for the form
                   variant="default" 
                   size="icon"
                   className="h-9 w-9 rounded-full shrink-0 bg-primary text-primary-foreground transition-all duration-200 ease-in-out hover:scale-105 hover:shadow-md active:scale-95"
