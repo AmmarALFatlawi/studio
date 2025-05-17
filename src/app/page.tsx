@@ -5,9 +5,7 @@ export default function Home() {
   return (
     <main className="flex flex-col items-center justify-start min-h-screen w-full bg-background p-6 md:p-8">
       <div className="text-center mt-[10vh] sm:mt-[15vh] mb-10 sm:mb-12">
-        <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-primary mb-3">
-          Contvia
-        </h1>
+        
         <p className="text-lg sm:text-xl md:text-2xl font-medium text-foreground mb-2">
           The only research workplace you need
         </p>
