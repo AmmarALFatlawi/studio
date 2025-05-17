@@ -16,8 +16,24 @@ import { Separator } from '@/components/ui/separator';
 import ClientOnly from '@/lib/ClientOnly';
 import { motion } from 'framer-motion';
 
+// Firebase imports for calling the callable function
+import { httpsCallable, type HttpsCallable } from "firebase/functions";
+import { functions as firebaseFunctionsApp } from '@/lib/firebase'; // Import initialized Firebase functions
+
 type ViewMode = 'summary' | 'detailed';
 type SortByType = 'relevance' | 'year_desc' | 'year_asc' | 'study_type';
+
+// Define NormalizedPaper interface matching Firebase function output
+interface NormalizedPaper {
+  title: string;
+  authors: string[];
+  year: number | null;
+  abstract: string | null;
+  doi: string | null;
+  pdf_link: string | null;
+  source: string;
+  citation_count: number | null;
+}
 
 
 export default function SearchResultsPage() {
@@ -33,20 +49,21 @@ export default function SearchResultsPage() {
   const query = useMemo(() => searchParams.get('query'), [searchParams]);
   const refinedQuery = useMemo(() => searchParams.get('refinedQuery'), [searchParams]);
   const errorParam = useMemo(() => searchParams.get('error'), [searchParams]);
+  const dataSource = useMemo(() => searchParams.get('dataSource'), [searchParams]); // Check for dataSource parameter
 
   useEffect(() => {
     if (errorParam && !initialErrorParamProcessed) {
       const specificError = errorParam === 'refinement_failed' 
         ? 'Query refinement failed. Using original query for search.' 
         : 'An unknown error occurred during refinement.';
-      setError(specificError);
+      setError(specificError); // Show refinement error but still proceed with fetch
       setInitialErrorParamProcessed(true);
     }
 
     async function fetchData() {
       const currentQuery = refinedQuery || query;
       if (!currentQuery) {
-        if (!(errorParam && initialErrorParamProcessed)) {
+        if (!(errorParam && initialErrorParamProcessed)) { // only set no query error if there wasn't already an errorParam shown
             setError("No query provided.");
         }
         setIsLoading(false);
@@ -54,14 +71,38 @@ export default function SearchResultsPage() {
         return;
       }
 
+      // Clear previous fetch errors only if not showing an errorParam like refinement_failed
       if (!(errorParam && initialErrorParamProcessed)) {
           setError(null); 
       }
       setIsLoading(true);
       
       try {
-        const response = await smartSearch({ userQuery: currentQuery });
-        setResults(response.studies || []);
+        if (dataSource === 'firebase') {
+          // Call the Firebase Function
+          const searchPapersUnified: HttpsCallable<{ query: string; limit?: number }, NormalizedPaper[]> = 
+            httpsCallable(firebaseFunctionsApp, "searchPapersUnified");
+          
+          console.log(`Fetching from Firebase for query: ${currentQuery}`);
+          const response = await searchPapersUnified({ query: currentQuery, limit: 20 }); // Adjust limit as needed
+          const papers = response.data as NormalizedPaper[];
+          
+          // Map NormalizedPaper to Study
+          setResults(papers.map(paper => ({
+            title: paper.title || "Untitled",
+            authors: paper.authors || [],
+            year: paper.year ?? new Date().getFullYear(), // Default to current year if null
+            studyType: paper.source || "N/A", // Use source as studyType
+            sampleSize: "N/A", // Not available from NormalizedPaper directly
+            keyFindings: paper.abstract || "No abstract available.", // Use abstract as keyFindings
+            supportingQuote: undefined, // Not available from current NormalizedPaper
+          })));
+        } else {
+          // Original Genkit smartSearch flow
+          console.log(`Fetching from Genkit smartSearch for query: ${currentQuery}`);
+          const response = await smartSearch({ userQuery: currentQuery });
+          setResults(response.studies || []);
+        }
       } catch (e: any) {
         console.error("Error fetching search results:", e);
         setError(`Failed to fetch search results: ${e.message || 'Unknown error'}`);
@@ -71,33 +112,36 @@ export default function SearchResultsPage() {
       }
     }
 
+    // Ensure we proceed with fetch even if only errorParam was set (e.g. refinement failed, but still want to search)
     if (query || refinedQuery) {
         fetchData();
     } else if (!errorParam) { 
         setError("No query provided.");
         setIsLoading(false);
         setResults([]);
-    } else {
-        setIsLoading(false);
+    } else { // Only errorParam is present, means no query was provided with it.
+        setIsLoading(false); // Stop loading if we only had an errorParam and no actual query
     }
     
-  }, [query, refinedQuery, errorParam, searchParams, initialErrorParamProcessed]);
+  }, [query, refinedQuery, errorParam, searchParams, initialErrorParamProcessed, dataSource]); // Added dataSource
 
 
   const sortedResults = useMemo(() => {
     let sorted = [...results];
     switch (sortBy) {
       case 'year_desc':
-        sorted.sort((a, b) => b.year - a.year);
+        sorted.sort((a, b) => (b.year ?? 0) - (a.year ?? 0));
         break;
       case 'year_asc':
-        sorted.sort((a, b) => a.year - b.year);
+        sorted.sort((a, b) => (a.year ?? 0) - (b.year ?? 0));
         break;
       case 'study_type':
-        sorted.sort((a, b) => a.studyType.localeCompare(b.studyType));
+        sorted.sort((a, b) => (a.studyType || "").localeCompare(b.studyType || ""));
         break;
       case 'relevance':
       default:
+        // For Firebase results, true relevance sorting would happen in the function.
+        // For mock Genkit data, it's already "relevant".
         break;
     }
     return sorted;
@@ -143,22 +187,24 @@ export default function SearchResultsPage() {
 
           {(query || refinedQuery || (error && !error.startsWith("Failed to fetch search results"))) && (
             <Card className="w-full bg-white rounded-2xl shadow-lg mb-8 p-6">
-              <CardTitle className="text-lg font-medium text-[#0B1F3A] mb-4">Search Details</CardTitle>
+              <CardHeader className="p-0"> {/* Removed pb-4 for tighter layout */}
+                <CardTitle className="text-sm sm:text-base font-semibold text-primary mb-3">Search Details</CardTitle>
+              </CardHeader>
               <CardContent className="p-0 space-y-3">
                 {query && (
                   <div>
-                    <h3 className="font-semibold text-sm text-slate-700 mb-1">Original Query:</h3>
-                    <p className="text-slate-600 bg-slate-100 p-3 rounded-md shadow-sm text-sm">{query}</p>
+                    <h3 className="font-semibold text-xs text-slate-700 mb-1">Original Query:</h3>
+                    <p className="text-slate-600 bg-slate-100 p-2 rounded-md shadow-sm text-xs sm:text-sm">{query}</p>
                   </div>
                 )}
                 {refinedQuery && (
                   <div>
-                    <h3 className="font-semibold text-sm text-slate-700 mb-1">Refined Query (AI):</h3>
-                    <p className="text-slate-600 bg-slate-100 p-3 rounded-md shadow-sm text-sm">{refinedQuery}</p>
+                    <h3 className="font-semibold text-xs text-slate-700 mb-1">Refined Query (AI):</h3>
+                    <p className="text-slate-600 bg-slate-100 p-2 rounded-md shadow-sm text-xs sm:text-sm">{refinedQuery}</p>
                   </div>
                 )}
                 {error && !error.startsWith("Failed to fetch search results") && (
-                    <p className="text-red-600 pt-2 text-sm">
+                    <p className="text-red-600 pt-2 text-xs sm:text-sm">
                       {error}
                     </p>
                 )}
@@ -170,7 +216,9 @@ export default function SearchResultsPage() {
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
               <div className="flex items-center gap-2 self-start sm:self-center">
                 <BarChartHorizontalBig className="h-5 w-5 text-[#0B1F3A]" />
-                <span className="font-semibold text-[#0B1F3A] text-lg">Results Overview</span>
+                <span className="font-semibold text-[#0B1F3A] text-lg">
+                  {isLoading ? 'Loading Results...' : `Search Results (${sortedResults.length})`}
+                </span>
               </div>
               <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
                 <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortByType)}>
@@ -215,7 +263,7 @@ export default function SearchResultsPage() {
                   </CardHeader>
                   <CardContent className="px-6 pb-6">
                       <p className="text-slate-700 font-medium">{error}</p>
-                      <p className="text-sm text-slate-500 mt-2">The AI model might be unable to process this query or there could be a temporary issue. Please try a different query or try again later.</p>
+                      <p className="text-sm text-slate-500 mt-2">The AI model or external APIs might be unable to process this query or there could be a temporary issue. Please try a different query or try again later.</p>
                   </CardContent>
               </Card>
           )}
@@ -234,22 +282,22 @@ export default function SearchResultsPage() {
             <div className="grid gap-6">
               {sortedResults.map((study, index) => (
                 <motion.div
-                  key={study.title + index}
+                  key={study.title + index + study.year} // Add year for better key uniqueness
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.4 }}
                   viewport={{ once: true }}
                 >
-                  <Card className="w-full bg-white rounded-2xl shadow-lg p-6 transition-all hover:shadow-2xl duration-300 ease-in-out">
+                  <Card className="w-full bg-white rounded-2xl shadow-lg p-6 transition-all hover:shadow-2xl duration-300 ease-in-out flex flex-col">
                     <CardHeader className="p-0 pb-3">
-                      <a href="#" className="hover:underline" onClick={(e) => e.preventDefault()} >
+                      <a href={study.supportingQuote || '#'} target="_blank" rel="noopener noreferrer" className="hover:underline" onClick={(e) => { if (!study.supportingQuote) e.preventDefault(); }} > {/* Using supportingQuote as a placeholder for pdf_link */}
                         <CardTitle className="text-xl font-semibold text-[#0B1F3A] hover:text-[#0B1F3A]/80 transition-colors">{study.title}</CardTitle>
                       </a>
                       <CardDescription className="text-sm text-slate-600 pt-1">
                         {study.authors.join(', ')}
                       </CardDescription>
                     </CardHeader>
-                    <CardContent className="p-0 space-y-4">
+                    <CardContent className="p-0 space-y-4 flex-grow">
                       <div className="flex flex-wrap gap-2 items-center">
                         <Badge variant="secondary" className="bg-green-600/10 text-green-700 hover:bg-green-600/20 text-xs font-medium px-3 py-1">
                           Year: {study.year}
@@ -287,6 +335,7 @@ export default function SearchResultsPage() {
                         variant="link" 
                         size="sm" 
                         className="text-green-600 hover:text-green-700 hover:underline font-medium px-0 transition-all duration-200 ease-in-out hover:scale-105 active:scale-98"
+                        onClick={() => console.log('Save/Export clicked for:', study.title)} // Placeholder action
                       >
                         <Download className="mr-1.5 h-4 w-4 text-green-600" />
                         Save/Export
@@ -302,5 +351,3 @@ export default function SearchResultsPage() {
     </ClientOnly>
   );
 }
-
-    
