@@ -3,7 +3,8 @@
 
 import type { FormEvent } from 'react';
 import { useState, useTransition, useRef } from 'react';
-import { Input } from "@/components/ui/input";
+import { Input } from "@/components/ui/input"; // Keep for potential future use if structure changes
+import { Button } from "@/components/ui/button"; // Keep for potential future use if structure changes
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Plus, SearchCode, ArrowUp } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
@@ -74,6 +75,8 @@ export function ResearchForm({ handleSearch, handleResearch }: ResearchFormProps
     handleSubmitLogic('search');
   };
 
+  const isSubmitDisabled = isResearchPending || (!query.trim() && (!fileInputRef.current || !fileInputRef.current.files || fileInputRef.current.files.length === 0));
+
   return (
     <TooltipProvider>
       <motion.form
@@ -85,21 +88,23 @@ export function ResearchForm({ handleSearch, handleResearch }: ResearchFormProps
         transition={{ duration: 0.6, ease: "easeOut" }}
       >
         <div className="relative flex items-center border-b border-input/50 mb-4 sm:mb-6">
+          {/* Input Field */}
           <motion.input
             id="query-input"
             type="text"
-            name="query" 
+            name="query"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleInputKeyDown}
             placeholder="Ask anything..."
-            className="w-full bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none pl-3 pr-10 py-4 text-xl h-auto"
+            className="w-full bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none pl-3 pr-10 py-2 text-base h-auto"
             aria-label="Research query input"
             whileFocus={{ scale: 1.01 }}
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
           />
         </div>
 
+        {/* Hidden file input */}
         <input
           type="file"
           ref={fileInputRef}
@@ -110,8 +115,11 @@ export function ResearchForm({ handleSearch, handleResearch }: ResearchFormProps
           aria-label="Upload document"
         />
 
+        {/* Action Buttons Container */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+          {/* Left Aligned Buttons */}
           <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
+            {/* Plus Button */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <motion.button
@@ -130,6 +138,7 @@ export function ResearchForm({ handleSearch, handleResearch }: ResearchFormProps
               </TooltipContent>
             </Tooltip>
             
+            {/* Deep Research Button */}
             <Tooltip>
               <TooltipTrigger asChild>
                  <motion.button
@@ -138,13 +147,13 @@ export function ResearchForm({ handleSearch, handleResearch }: ResearchFormProps
                     "font-medium rounded-full px-3 h-7 text-xs flex items-center justify-center gap-1", 
                     "bg-secondary text-secondary-foreground hover:bg-secondary/80",
                     "transition-all duration-200 ease-in-out active:scale-95",
-                    (isResearchPending || (!query.trim() && (!fileInputRef.current || !fileInputRef.current.files || fileInputRef.current.files.length === 0))) && "opacity-50 cursor-not-allowed"
+                    isSubmitDisabled && "opacity-50 cursor-not-allowed"
                   )}
                   onClick={() => handleSubmitLogic('research')}
-                  disabled={isResearchPending || (!query.trim() && (!fileInputRef.current || !fileInputRef.current.files || fileInputRef.current.files.length === 0))}
+                  disabled={isSubmitDisabled}
                   aria-label="Perform an AI-enhanced deep research"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+                  whileHover={{ scale: isSubmitDisabled ? 1 : 1.05 }}
+                  whileTap={{ scale: isSubmitDisabled ? 1 : 0.95 }}
                 >
                   <SearchCode className="h-3 w-3 shrink-0 mr-1" /> 
                   Deep Research
@@ -156,6 +165,7 @@ export function ResearchForm({ handleSearch, handleResearch }: ResearchFormProps
             </Tooltip>
           </div>
 
+          {/* Right Aligned Button (Send) */}
           <Tooltip>
             <TooltipTrigger asChild>
               <motion.button
@@ -165,11 +175,11 @@ export function ResearchForm({ handleSearch, handleResearch }: ResearchFormProps
                     "h-6 w-6 flex items-center justify-center rounded-full shrink-0", 
                     "bg-primary text-primary-foreground hover:bg-primary/90",
                     "transition-all duration-200 ease-in-out active:scale-95",
-                    (isResearchPending || (!query.trim() && (!fileInputRef.current || !fileInputRef.current.files || fileInputRef.current.files.length === 0))) && "opacity-50 cursor-not-allowed"
+                    isSubmitDisabled && "opacity-50 cursor-not-allowed"
                   )}
-                disabled={isResearchPending || (!query.trim() && (!fileInputRef.current || !fileInputRef.current.files || fileInputRef.current.files.length === 0))}
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
+                disabled={isSubmitDisabled}
+                whileHover={{ scale: isSubmitDisabled ? 1 : 1.1 }}
+                whileTap={{ scale: isSubmitDisabled ? 1 : 0.9 }}
               >
                 <ArrowUp className="h-3 w-3" />
               </motion.button>
