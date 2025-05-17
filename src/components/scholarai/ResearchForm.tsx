@@ -35,7 +35,6 @@ export function ResearchForm({ handleSearch, handleResearch }: ResearchFormProps
 
     if (!formRef.current) return;
     const formData = new FormData(formRef.current);
-    // Add the current query to formData as it might not be picked up if input is not part of form elements
     formData.set('query', query);
 
 
@@ -51,7 +50,7 @@ export function ResearchForm({ handleSearch, handleResearch }: ResearchFormProps
   const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
-      handleSubmitLogic('search');
+      handleSubmitLogic('search'); // Default action on Enter
     }
   };
 
@@ -69,6 +68,7 @@ export function ResearchForm({ handleSearch, handleResearch }: ResearchFormProps
     }
   };
 
+  // Default form submission (e.g., triggered by Enter key or the primary submit button)
   const onFormSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     handleSubmitLogic('search');
@@ -88,7 +88,7 @@ export function ResearchForm({ handleSearch, handleResearch }: ResearchFormProps
           <motion.input
             id="query-input"
             type="text"
-            name="query" // Ensure name attribute is present for FormData
+            name="query" 
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleInputKeyDown}
@@ -117,12 +117,12 @@ export function ResearchForm({ handleSearch, handleResearch }: ResearchFormProps
                 <motion.button
                   type="button"
                   aria-label="Upload document or add context"
-                  className="h-12 w-12 flex items-center justify-center rounded-full shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-all duration-200 ease-in-out active:scale-95"
+                  className="h-6 w-6 flex items-center justify-center rounded-full shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-all duration-200 ease-in-out active:scale-95"
                   onClick={handlePlusButtonClick}
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
                 >
-                  <Plus className="h-6 w-6" />
+                  <Plus className="h-3 w-3" />
                 </motion.button>
               </TooltipTrigger>
               <TooltipContent>
@@ -135,7 +135,7 @@ export function ResearchForm({ handleSearch, handleResearch }: ResearchFormProps
                  <motion.button
                   type="button"
                   className={cn(
-                    "font-medium rounded-full px-3 h-7 text-xs flex items-center justify-center gap-1", // Adjusted for 50% smaller
+                    "font-medium rounded-full px-3 h-7 text-xs flex items-center justify-center gap-1", 
                     "bg-secondary text-secondary-foreground hover:bg-secondary/80",
                     "transition-all duration-200 ease-in-out active:scale-95",
                     (isResearchPending || (!query.trim() && (!fileInputRef.current || !fileInputRef.current.files || fileInputRef.current.files.length === 0))) && "opacity-50 cursor-not-allowed"
@@ -146,7 +146,7 @@ export function ResearchForm({ handleSearch, handleResearch }: ResearchFormProps
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  <SearchCode className="h-3 w-3 shrink-0 mr-1" /> {/* Adjusted for 50% smaller */}
+                  <SearchCode className="h-3 w-3 shrink-0 mr-1" /> 
                   Deep Research
                 </motion.button>
               </TooltipTrigger>
@@ -162,7 +162,7 @@ export function ResearchForm({ handleSearch, handleResearch }: ResearchFormProps
                 type="submit"
                 aria-label="Submit query"
                 className={cn(
-                    "h-6 w-6 flex items-center justify-center rounded-full shrink-0", // Made 50% smaller
+                    "h-6 w-6 flex items-center justify-center rounded-full shrink-0", 
                     "bg-primary text-primary-foreground hover:bg-primary/90",
                     "transition-all duration-200 ease-in-out active:scale-95",
                     (isResearchPending || (!query.trim() && (!fileInputRef.current || !fileInputRef.current.files || fileInputRef.current.files.length === 0))) && "opacity-50 cursor-not-allowed"
@@ -171,7 +171,7 @@ export function ResearchForm({ handleSearch, handleResearch }: ResearchFormProps
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
               >
-                <ArrowUp className="h-3 w-3" /> {/* Icon made 50% smaller */}
+                <ArrowUp className="h-3 w-3" />
               </motion.button>
             </TooltipTrigger>
             <TooltipContent>
