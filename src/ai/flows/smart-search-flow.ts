@@ -9,35 +9,24 @@
  * - Study - The structure for an individual academic study.
  */
 
-import {ai} from '@/ai/genkit'; // ai object is not directly used if only calling Firebase
+// import {ai} from '@/ai/genkit'; // Genkit ai object not used if only calling Firebase
 import {z} from 'genkit';
-import { httpsCallable } from "firebase/functions";
+import { httpsCallable, type HttpsCallableResult } from "firebase/functions";
 import { functions as firebaseFunctionsApp } from '@/lib/firebase'; // Ensure this path is correct
-
-// Define NormalizedPaper structure if not imported from a shared types file
-// This should match the output of your searchPapersUnified Firebase Function
-interface NormalizedPaper {
-  title: string;
-  authors: string[];
-  year: number | null;
-  abstract: string | null;
-  doi: string | null;
-  pdf_link: string | null;
-  source: string;
-  citation_count: number | null;
-}
+import type { NormalizedPaper } from '@/app/search-results/page'; // Assuming NormalizedPaper is exported from here or a shared types file
 
 const SmartSearchInputSchema = z.object({
   userQuery: z.string().describe('The user query in plain English.'),
 });
 export type SmartSearchInput = z.infer<typeof SmartSearchInputSchema>;
 
+// Keep StudySchema as it's the expected output structure for the UI
 const StudySchema = z.object({
   title: z.string().describe('Full title of the paper.'),
   authors: z.array(z.string()).describe('List of authors as an array of strings.'),
-  year: z.number().describe('Year of publication as a number.'),
+  year: z.number().nullable().describe('Year of publication as a number or null.'),
   studyType: z.string().describe('Type of study (e.g., RCT, Meta-analysis, or source like PubMed).'),
-  sampleSize: z.string().describe('Sample size (e.g., "150 participants", "N/A for review").'),
+  sampleSize: z.string().optional().describe('Sample size (e.g., "150 participants", "N/A for review").'),
   keyFindings: z.string().describe('A concise 1-2 sentence summary of the main findings in plain English.'),
   supportingQuote: z.string().optional().describe('A direct quote from the paper that supports the key findings. Can be "No specific quote available." if none is found.'),
 });
@@ -53,11 +42,11 @@ const mapNormalizedPaperToStudy = (paper: NormalizedPaper): Study => {
   return {
     title: paper.title || "Untitled",
     authors: paper.authors || [],
-    year: paper.year ?? new Date().getFullYear(), // Fallback year
-    studyType: paper.source || "N/A", // Use source as studyType
-    sampleSize: "N/A", // NormalizedPaper doesn't have this field
-    keyFindings: paper.abstract || "No abstract available.",
-    supportingQuote: undefined, // NormalizedPaper doesn't have this field
+    year: paper.year, // Already number | null
+    studyType: paper.source || "N/A", // Use source from NormalizedPaper as studyType
+    sampleSize: "N/A", // NormalizedPaper doesn't have this, default
+    keyFindings: paper.abstract || "No abstract available.", // Use abstract as keyFindings
+    supportingQuote: undefined, // NormalizedPaper doesn't have this
   };
 };
 
@@ -66,12 +55,14 @@ export async function smartSearch(input: SmartSearchInput): Promise<SmartSearchO
   
   try {
     const searchPapersUnifiedCallable = httpsCallable<SmartSearchInput, NormalizedPaper[]>(firebaseFunctionsApp, "searchPapersUnified");
-    const response = await searchPapersUnifiedCallable({ query: input.userQuery, limit: 20 }); // Pass limit, adjust as needed
+    
+    // Assuming SmartSearchInput is compatible or you adjust the data passed
+    const response: HttpsCallableResult<NormalizedPaper[]> = await searchPapersUnifiedCallable({ query: input.userQuery, limit: 20 });
     
     const papersFromFirebase = response.data;
     
     if (!Array.isArray(papersFromFirebase)) {
-        console.error("Firebase function 'searchPapersUnified' did not return an array. Data:", papersFromFirebase);
+        console.error("Firebase function 'searchPapersUnified' (called from smartSearch flow) did not return an array. Data:", papersFromFirebase);
         throw new Error("Invalid data format from search service.");
     }
 
@@ -80,31 +71,21 @@ export async function smartSearch(input: SmartSearchInput): Promise<SmartSearchO
     return { studies: mappedStudies };
 
   } catch (error: any) {
-    console.error("Error calling 'searchPapersUnified' Firebase Function from smartSearch flow:", error);
+    let errorMessage = 'Unknown error';
+    if (error.message) {
+      errorMessage = error.message;
+    }
+    let errorCode = 'N/A';
+    if (error.code) { // Firebase errors often have a 'code' property
+      errorCode = error.code;
+    }
+    console.error(
+      `Error calling 'searchPapersUnified' Firebase Function from smartSearch flow. Code: ${errorCode}, Message: ${errorMessage}`,
+      error // Log the full error object for all details
+    );
     // Re-throw or handle as appropriate for Genkit flow error handling
     // For now, re-throwing to let the caller (search-results page) handle it.
-    throw new Error(`Failed to get search results via Firebase: ${error.message || 'Unknown error'}`);
+    // Include the error code in the re-thrown error message for better client-side context.
+    throw new Error(`Failed to get search results via Firebase: ${errorCode} - ${errorMessage}`);
   }
 }
-
-// Original Genkit prompt and flow for LLM-based search (now replaced by Firebase call)
-// This part can be removed or kept for reference if you plan to use LLM search features later.
-/*
-const smartSearchPrompt = ai.definePrompt({
-  name: 'smartSearchPrompt',
-  input: {schema: SmartSearchInputSchema},
-  output: {schema: SmartSearchOutputSchema},
-  prompt: `You are an expert research assistant... (original prompt content)`,
-});
-
-const smartSearchFlow = ai.defineFlow(
-  {
-    name: 'smartSearchFlow',
-    inputSchema: SmartSearchInputSchema,
-    outputSchema: SmartSearchOutputSchema,
-  },
-  async (input: SmartSearchInput) => {
-    // ... original flow logic ...
-  }
-);
-*/
