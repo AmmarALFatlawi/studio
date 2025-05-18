@@ -3,7 +3,7 @@
 
 import { Suspense, useEffect, useState, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
-import type { Study } from '@/ai/flows/smart-search-flow';
+import type { Study } from '@/ai/flows/smart-search-flow'; // Still use Study type
 import { smartSearch } from '@/ai/flows/smart-search-flow';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,12 +16,13 @@ import { Separator } from '@/components/ui/separator';
 import { motion } from 'framer-motion';
 
 // Firebase imports
-import { getFunctions, httpsCallable, type HttpsCallable, type HttpsCallableResult } from "firebase/functions";
+import { httpsCallable, type HttpsCallable, type HttpsCallableResult } from "firebase/functions";
 import { functions as firebaseFunctionsApp } from '@/lib/firebase';
 
 type ViewMode = 'summary' | 'detailed';
 type SortByType = 'relevance' | 'year_desc' | 'year_asc' | 'study_type';
 
+// This structure should match the output of your searchPapersUnified Firebase Function
 export interface NormalizedPaper {
   title: string;
   authors: string[];
@@ -36,7 +37,7 @@ export interface NormalizedPaper {
 function SearchResultsContent() {
   const searchParams = useSearchParams();
   
-  const [results, setResults] = useState<Study[]>([]);
+  const [results, setResults] = useState<Study[]>([]); // UI still expects Study[]
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('summary');
@@ -48,6 +49,7 @@ function SearchResultsContent() {
   const errorParam = useMemo(() => searchParams.get('error'), [searchParams]);
   const dataSource = useMemo(() => searchParams.get('dataSource'), [searchParams]);
 
+  // Helper function to map NormalizedPaper to Study, if needed for direct Firebase call path
   const mapNormalizedPaperToStudy = useCallback((paper: NormalizedPaper): Study => {
     return {
       title: paper.title || "Untitled",
@@ -93,34 +95,40 @@ function SearchResultsContent() {
           
           const response: HttpsCallableResult<NormalizedPaper[]> = await searchPapersUnifiedCallable({ query: currentQuery, limit: 20 });
           const papers = response.data;
+
+          if (!Array.isArray(papers)) {
+            console.error("Firebase function 'searchPapersUnified' (direct call) did not return an array. Data:", papers);
+            throw new Error("Invalid data format from search service.");
+          }
           
           setResults(papers.map(mapNormalizedPaperToStudy));
         } else {
-          console.log(`Fetching from Genkit smartSearch for query: ${currentQuery}`);
+          // Standard search now also uses Firebase via the updated smartSearch flow
+          console.log(`Fetching via smartSearch Genkit flow (which calls Firebase) for query: ${currentQuery}`);
           const response = await smartSearch({ userQuery: currentQuery });
           setResults(response.studies || []);
         }
       } catch (e: any) {
-        console.error("Error fetching search results:", e);
-        let errorMessage = `Failed to fetch search results: ${e.message || 'Unknown error'}`;
+        console.error("Error fetching search results on page:", e);
+        let userFriendlyMessage = "We couldn't fetch results right now. Please try again later.";
+        
+        // Check for specific Firebase error codes if desired
         if (e.code === 'functions/internal' || e.message === 'internal' || e.code === 'internal') {
-            errorMessage = "Failed to fetch search results: An internal server error occurred with the search service.";
-            if (e.details) {
-                errorMessage += ` Details: ${JSON.stringify(e.details)}`;
-            }
-        } else if (e.code) { 
-             errorMessage = `Failed to fetch search results: ${e.code} - ${e.message}`;
-             if (e.details) {
-                errorMessage += ` Details: ${JSON.stringify(e.details)}`;
-            }
+            userFriendlyMessage = "An internal server error occurred with the search service. Please try again later.";
+        } else if (e.code) { // Other Firebase error codes
+             userFriendlyMessage = `Search failed: ${e.message}. Please try again.`;
+        } else if (e.message) { // Generic error message from smartSearch flow or other issues
+            // Keep the userFriendlyMessage or customize if e.message is too technical
+            // For example: if (e.message.includes("Network Error")) ...
         }
-        setError(errorMessage);
+        setError(userFriendlyMessage);
         setResults([]);
       } finally {
         setIsLoading(false);
       }
     }
 
+    // Initial fetch or when searchParams change
     if (query || refinedQuery) {
         fetchData();
     } else if (!errorParam) { 
@@ -131,7 +139,7 @@ function SearchResultsContent() {
         setIsLoading(false); 
     }
     
-  }, [query, refinedQuery, errorParam, dataSource, initialErrorParamProcessed, mapNormalizedPaperToStudy, searchParams]);
+  }, [query, refinedQuery, errorParam, dataSource, initialErrorParamProcessed, mapNormalizedPaperToStudy, searchParams]); // Added searchParams
 
 
   const sortedResults = useMemo(() => {
@@ -191,7 +199,7 @@ function SearchResultsContent() {
             </Link>
           </Button>
 
-          {(query || refinedQuery || (error && !error.startsWith("Failed to fetch search results"))) && (
+          {(query || refinedQuery || (error && !error.startsWith("We couldn't fetch results right now") && !error.startsWith("An internal server error occurred") && !error.startsWith("Search failed:"))) && (
             <Card className="w-full bg-white rounded-2xl shadow-lg mb-8 p-6">
               <CardHeader className="p-0">
                 <CardTitle className="text-sm sm:text-base font-semibold text-primary mb-3">Search Details</CardTitle>
@@ -209,7 +217,7 @@ function SearchResultsContent() {
                     <p className="text-slate-600 bg-slate-100 p-2 rounded-md shadow-sm text-xs sm:text-sm">{refinedQuery}</p>
                   </div>
                 )}
-                {error && !error.startsWith("Failed to fetch search results") && (
+                {error && !error.startsWith("We couldn't fetch results right now") && !error.startsWith("An internal server error occurred") && !error.startsWith("Search failed:") && (
                     <p className="text-red-600 pt-2 text-xs sm:text-sm">
                       {error}
                     </p>
@@ -262,20 +270,19 @@ function SearchResultsContent() {
             </div>
           </div>
           
-          {error && error.startsWith("Failed to fetch search results") && (
-              <Card className="w-full bg-white rounded-2xl shadow-lg mb-6 border border-red-500/50">
+          {error && (error.startsWith("We couldn't fetch results right now") || error.startsWith("An internal server error occurred") || error.startsWith("Search failed:")) && (
+              <Card className="w-full bg-white rounded-2xl shadow-lg mb-6 border border-destructive/50">
                   <CardHeader className="p-6 flex flex-row items-center gap-3">
-                      <ServerCrash className="h-8 w-8 text-red-600" />
+                      <ServerCrash className="h-8 w-8 text-destructive" />
                       <div>
-                        <CardTitle className="text-red-600 text-lg">Error Fetching Results</CardTitle>
+                        <CardTitle className="text-destructive text-lg">Error Fetching Results</CardTitle>
                         <CardDescription className="text-slate-600">
-                          {error.includes("Details:") ? error.substring(error.indexOf("Details:") + "Details:".length).trim() : "The AI model or external APIs might be unable to process this query or there could be a temporary issue."}
+                          {error}
                         </CardDescription>
                       </div>
                   </CardHeader>
                   <CardContent className="px-6 pb-6">
-                      <p className="text-slate-700 font-medium text-sm bg-red-50 p-3 rounded-md border border-red-200">{error}</p>
-                      <p className="text-xs text-slate-500 mt-3">
+                      <p className="text-xs text-slate-500 mt-1">
                         This might be due to a temporary issue with the external academic APIs or the search service itself. Please try a different query or try again in a few moments. If the problem persists, check the server logs for more details.
                       </p>
                   </CardContent>
@@ -296,7 +303,7 @@ function SearchResultsContent() {
             <div className="grid gap-6">
               {sortedResults.map((study, index) => (
                 <motion.div
-                  key={study.title + index + study.year} 
+                  key={study.title + index + study.year + study.studyType} // Made key more unique
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.4 }}
@@ -305,11 +312,11 @@ function SearchResultsContent() {
                   <Card className="w-full bg-white rounded-2xl shadow-lg p-6 transition-all hover:shadow-2xl duration-300 ease-in-out flex flex-col">
                     <CardHeader className="p-0 pb-3">
                       <a 
-                        href={ (study as any).pdf_link || ( (study as any).doi ? `https://doi.org/${(study as any).doi}` : '#') } 
+                        href={ ((study as any).pdf_link || (study as any).doi ? `https://doi.org/${(study as any).doi}` : '#') } // pdf_link and doi are part of NormalizedPaper, not Study directly
                         target="_blank" 
                         rel="noopener noreferrer" 
                         className="hover:underline" 
-                        onClick={(e) => { if (!(study as any).pdf_link && !(study as any).doi) e.preventDefault(); }} 
+                        onClick={(e) => { if (!((study as any).pdf_link || (study as any).doi)) e.preventDefault(); }} 
                       >
                         <CardTitle className="text-xl font-semibold text-[#0B1F3A] hover:text-[#0B1F3A]/80 transition-colors">{study.title}</CardTitle>
                       </a>
@@ -323,7 +330,7 @@ function SearchResultsContent() {
                           Year: {study.year}
                         </Badge>
                         <Badge variant="secondary" className="bg-green-600/10 text-green-700 hover:bg-green-600/20 text-xs font-medium px-3 py-1">
-                          {study.studyType}
+                          {study.studyType} {/* This will now show source, e.g., "PubMed" */}
                         </Badge>
                         {study.sampleSize && study.sampleSize.toLowerCase() !== 'n/a' && (
                           <Badge variant="outline" className="text-slate-500 border-slate-300 text-xs font-medium px-3 py-1">
@@ -335,7 +342,7 @@ function SearchResultsContent() {
                       <Separator className="my-3 bg-slate-200" />
 
                       <div>
-                        <h4 className="font-semibold text-md text-slate-700 mb-1">Key Findings:</h4>
+                        <h4 className="font-semibold text-md text-slate-700 mb-1">Key Findings:</h4> {/* This will now show the abstract */}
                         <p className={`text-slate-700 text-base leading-relaxed ${viewMode === 'summary' && study.keyFindings.length > 150 ? 'line-clamp-3' : ''}`}>
                           {study.keyFindings}
                         </p>
@@ -355,7 +362,7 @@ function SearchResultsContent() {
                         variant="link" 
                         size="sm" 
                         className="text-green-600 hover:text-green-700 hover:underline font-medium px-0 transition-all duration-200 ease-in-out hover:scale-105 active:scale-98"
-                        onClick={() => console.log('Save/Export clicked for:', study.title)} 
+                        onClick={() => console.log('Save/Export clicked for:', study.title)} // Placeholder
                       >
                         <Download className="mr-1.5 h-4 w-4 text-green-600" />
                         Save/Export
@@ -383,4 +390,3 @@ export default function SearchResultsPage() {
     </Suspense>
   );
 }
-
